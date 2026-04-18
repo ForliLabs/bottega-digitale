@@ -1,0 +1,253 @@
+// Bottega Digitale — Full Multi-Tenant Schema
+// SQLite database via Prisma ORM
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Auth & Multi-Tenancy ───────────────────────────────────────
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String?
+  passwordHash   String
+  role           String       @default("owner") // owner | staff
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  memberships    Membership[]
+  sessions       Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Business {
+  id                     String         @id @default(cuid())
+  name                   String
+  slug                   String         @unique
+  category               String
+  city                   String         @default("Forlì")
+  address                String
+  phone                  String
+  email                  String
+  description            String
+  openingHours           String         @default("[]") // JSON array
+  websiteVisitsThisMonth Int            @default(0)
+  bookingLeadTime        String         @default("24 ore")
+  // Subscription
+  subscriptionTier       String         @default("vetrina") // vetrina | bottega | maestro
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+  // Website publishing
+  websitePublished       Boolean        @default(false)
+  customDomain           String?
+  websiteTemplate        String         @default("default")
+  // Google Business Profile
+  googlePlaceId          String?
+  googleAccessToken      String?
+  googleRefreshToken     String?
+  // WhatsApp
+  whatsappPhoneId        String?
+  whatsappToken          String?
+  // Queue management
+  queueEnabled           Boolean        @default(false)
+  avgServiceMinutes      Int            @default(30)
+  // Loyalty
+  loyaltyEnabled         Boolean        @default(false)
+  loyaltyPointsPerVisit  Int            @default(10)
+  loyaltyRewardThreshold Int            @default(100)
+  loyaltyRewardName      String         @default("Servizio gratuito")
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  memberships            Membership[]
+  services               Service[]
+  bookings               Booking[]
+  customers              Customer[]
+  reviews                Review[]
+  socialPosts            SocialPost[]
+  queueEntries           QueueEntry[]
+  loyaltyCards           LoyaltyCard[]
+  loyaltyRedemptions     LoyaltyRedemption[]
+  whatsappMessages       WhatsappMessage[]
+}
+
+model Membership {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  role       String   @default("owner") // owner | staff
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, businessId])
+}
+
+// ─── Services ───────────────────────────────────────────────────
+
+model Service {
+  id             String    @id @default(cuid())
+  businessId     String
+  name           String
+  priceEuro      Float
+  durationMinutes Int
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings       Booking[]
+  createdAt      DateTime  @default(now())
+}
+
+// ─── Bookings ───────────────────────────────────────────────────
+
+model Booking {
+  id              String   @id @default(cuid())
+  businessId      String
+  customerId      String?
+  serviceId       String?
+  customerName    String
+  service         String   // denormalized service name
+  startsAt        DateTime
+  durationMinutes Int      @default(30)
+  status          String   @default("Confermata") // Confermata | In attesa | Completata | Cancellata
+  channel         String   @default("Sito web") // Sito web | WhatsApp | Instagram | Telefono
+  priceEuro       Float    @default(0)
+  notes           String?
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerRef     Customer? @relation(fields: [customerId], references: [id])
+  serviceRef      Service?  @relation(fields: [serviceId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── Customers & CRM ────────────────────────────────────────────
+
+model Customer {
+  id            String         @id @default(cuid())
+  businessId    String
+  name          String
+  phone         String
+  email         String?
+  lastVisit     DateTime
+  totalVisits   Int            @default(1)
+  loyaltyPoints Int            @default(0)
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings      Booking[]
+  loyaltyCards  LoyaltyCard[]
+  queueEntries  QueueEntry[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// ─── Reviews ────────────────────────────────────────────────────
+
+model Review {
+  id                 String   @id @default(cuid())
+  businessId         String
+  author             String
+  rating             Int
+  date               DateTime
+  comment            String
+  responseSuggestion String?
+  responded          Boolean  @default(false)
+  googleReviewId     String?
+  business           Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+}
+
+// ─── Stripe / Billing ───────────────────────────────────────────
+
+model StripeEvent {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique
+  type          String
+  data          String   // JSON
+  processedAt   DateTime @default(now())
+}
+
+// ─── WhatsApp Messages ──────────────────────────────────────────
+
+model WhatsappMessage {
+  id         String   @id @default(cuid())
+  businessId String
+  direction  String   // inbound | outbound
+  phone      String
+  body       String
+  status     String   @default("sent") // sent | delivered | read | failed
+  templateId String?
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+}
+
+// ─── AI Social Media Content ────────────────────────────────────
+
+model SocialPost {
+  id          String   @id @default(cuid())
+  businessId  String
+  imageUrl    String?
+  caption     String
+  hashtags    String   @default("") // comma-separated
+  platform    String   @default("instagram") // instagram | facebook
+  status      String   @default("draft") // draft | scheduled | published
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Walk-In Queue ──────────────────────────────────────────────
+
+model QueueEntry {
+  id              String   @id @default(cuid())
+  businessId      String
+  customerId      String?
+  customerName    String
+  customerPhone   String?
+  position        Int
+  status          String   @default("waiting") // waiting | called | serving | completed | cancelled
+  estimatedWaitMin Int     @default(0)
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  createdAt       DateTime @default(now())
+  calledAt        DateTime?
+  completedAt     DateTime?
+}
+
+// ─── Digital Loyalty Card ───────────────────────────────────────
+
+model LoyaltyCard {
+  id          String              @id @default(cuid())
+  businessId  String
+  customerId  String
+  points      Int                 @default(0)
+  totalEarned Int                 @default(0)
+  business    Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  redemptions LoyaltyRedemption[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([businessId, customerId])
+}
+
+model LoyaltyRedemption {
+  id         String      @id @default(cuid())
+  businessId String
+  cardId     String
+  points     Int
+  reward     String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  card       LoyaltyCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+}
