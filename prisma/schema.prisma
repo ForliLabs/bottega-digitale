@@ -69,6 +69,17 @@ model Business {
   loyaltyPointsPerVisit  Int            @default(10)
   loyaltyRewardThreshold Int            @default(100)
   loyaltyRewardName      String         @default("Servizio gratuito")
+  // Online booking
+  onlineBookingEnabled   Boolean        @default(false)
+  maxDailyBookings       Int            @default(20)
+  bookingBufferMinutes   Int            @default(10)
+  // Cross-promotion
+  crossPromoEnabled      Boolean        @default(false)
+  // Fiscal
+  partitaIva             String?
+  codiceFiscale          String?
+  codiceDestinatarioSdi  String?        @default("0000000")
+  regimeFiscale          String?        @default("RF01")
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
   memberships            Membership[]
@@ -81,6 +92,17 @@ model Business {
   loyaltyCards           LoyaltyCard[]
   loyaltyRedemptions     LoyaltyRedemption[]
   whatsappMessages       WhatsappMessage[]
+  automationFlows        AutomationFlow[]
+  jobs                   Job[]
+  insights               Insight[]
+  staffProfiles          StaffProfile[]
+  fiscalProfile          FiscalProfile?
+  partnershipsInitiated  Partnership[]  @relation("PartnerA")
+  partnershipsReceived   Partnership[]  @relation("PartnerB")
+  crossPromotionsSent    CrossPromotion[] @relation("PromoFrom")
+  crossPromotionsReceived CrossPromotion[] @relation("PromoTo")
+  vouchers               Voucher[]
+  pushSubscriptions      PushSubscription[]
 }
 
 model Membership {
@@ -115,17 +137,20 @@ model Booking {
   businessId      String
   customerId      String?
   serviceId       String?
+  staffId         String?
   customerName    String
+  customerPhone   String?
   service         String   // denormalized service name
   startsAt        DateTime
   durationMinutes Int      @default(30)
   status          String   @default("Confermata") // Confermata | In attesa | Completata | Cancellata
-  channel         String   @default("Sito web") // Sito web | WhatsApp | Instagram | Telefono
+  channel         String   @default("Sito web") // Sito web | WhatsApp | Instagram | Telefono | Online
   priceEuro       Float    @default(0)
   notes           String?
   business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customerRef     Customer? @relation(fields: [customerId], references: [id])
   serviceRef      Service?  @relation(fields: [serviceId], references: [id])
+  staffProfile    StaffProfile? @relation(fields: [staffId], references: [id])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -138,13 +163,18 @@ model Customer {
   name          String
   phone         String
   email         String?
+  birthday      DateTime?
   lastVisit     DateTime
+  lastLogin     DateTime?
   totalVisits   Int            @default(1)
   loyaltyPoints Int            @default(0)
+  notifyWhatsApp Boolean       @default(true)
+  notifyPush    Boolean        @default(true)
   business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   bookings      Booking[]
   loyaltyCards  LoyaltyCard[]
   queueEntries  QueueEntry[]
+  customerSessions CustomerSession[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -250,4 +280,239 @@ model LoyaltyRedemption {
   business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   card       LoyaltyCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
   createdAt  DateTime    @default(now())
+}
+
+// ─── Automation Engine (Feature 1) ──────────────────────────────
+
+model AutomationFlow {
+  id          String          @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  enabled     Boolean         @default(true)
+  triggerEvent String         // booking.completed | booking.created | customer.created | review.received | loyalty.threshold_reached | queue.turn_approaching
+  conditions  String          @default("{}") // JSON conditions
+  actions     String          @default("[]") // JSON array of action configs
+  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  executions  FlowExecution[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model FlowExecution {
+  id          String         @id @default(cuid())
+  flowId      String
+  triggerData String         @default("{}") // JSON
+  status      String         @default("pending") // pending | running | completed | failed
+  results     String         @default("[]") // JSON array of action results
+  error       String?
+  flow        AutomationFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  startedAt   DateTime       @default(now())
+  completedAt DateTime?
+}
+
+// ─── Background Job Scheduler (Feature 2) ───────────────────────
+
+model Job {
+  id           String    @id @default(cuid())
+  businessId   String?
+  type         String    // booking-reminder | google-review-sync | social-publisher | loyalty-birthday | subscription-warning | insight-generator
+  status       String    @default("pending") // pending | running | completed | failed | cancelled
+  priority     Int       @default(0)
+  payload      String    @default("{}") // JSON
+  result       String?   // JSON
+  error        String?
+  scheduledAt  DateTime  @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  retryCount   Int       @default(0)
+  maxRetries   Int       @default(3)
+  cronExpression String? // for recurring jobs
+  nextRunAt    DateTime?
+  business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ─── AI Advisor / Insights (Feature 4) ──────────────────────────
+
+model Insight {
+  id          String   @id @default(cuid())
+  businessId  String
+  category    String   // revenue | schedule | retention | reputation | benchmark
+  title       String
+  body        String
+  actionLabel String?
+  dismissed   Boolean  @default(false)
+  deliveredVia String  @default("dashboard") // dashboard | whatsapp | both
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// ─── Multi-Staff (Feature 5) ────────────────────────────────────
+
+model StaffProfile {
+  id            String    @id @default(cuid())
+  businessId    String
+  userId        String?
+  name          String
+  email         String?
+  phone         String?
+  role          String    @default("staff") // owner | manager | staff
+  color         String    @default("#3B82F6") // calendar color
+  workingHours  String    @default("[]") // JSON array of day schedules
+  serviceIds    String    @default("[]") // JSON array of service IDs they can perform
+  active        Boolean   @default(true)
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings      Booking[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ─── Customer Self-Service Portal (Feature 6) ───────────────────
+
+model CustomerSession {
+  id          String   @id @default(cuid())
+  customerId  String
+  token       String   @unique
+  otpCode     String?
+  otpExpiresAt DateTime?
+  verified    Boolean  @default(false)
+  expiresAt   DateTime
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// ─── E-Invoice / Fatturazione Elettronica (Feature 7) ───────────
+
+model FiscalProfile {
+  id                   String   @id @default(cuid())
+  businessId           String   @unique
+  ragioneSociale       String
+  partitaIva           String
+  codiceFiscale        String
+  indirizzo            String
+  cap                  String
+  citta                String
+  provincia            String   @default("FC")
+  nazione              String   @default("IT")
+  codiceDestinatario   String   @default("0000000")
+  pecDestinatario      String?
+  regimeFiscale        String   @default("RF01") // RF01 = Ordinario, RF19 = Forfettario
+  business             Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoices             Invoice[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Invoice {
+  id                 String        @id @default(cuid())
+  fiscalProfileId    String
+  progressiveNumber  Int
+  fiscalYear         Int
+  customerName       String
+  customerFiscalCode String?
+  customerVatNumber  String?
+  customerAddress    String?
+  totalNet           Float         @default(0)
+  totalVat           Float         @default(0)
+  totalGross         Float         @default(0)
+  vatRate            Float         @default(22)
+  status             String        @default("bozza") // bozza | inviata | consegnata | rifiutata
+  sdiIdentifier      String?
+  pdfUrl             String?
+  xmlContent         String?
+  notes              String?
+  issuedAt           DateTime      @default(now())
+  fiscalProfile      FiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+  lines              InvoiceLine[]
+  createdAt          DateTime      @default(now())
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Float
+  vatRate     Float   @default(22)
+  totalNet    Float
+  totalVat    Float
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// ─── Cross-Promotion Network (Feature 8) ────────────────────────
+
+model Partnership {
+  id            String   @id @default(cuid())
+  businessAId   String
+  businessBId   String
+  status        String   @default("pending") // pending | active | declined | ended
+  type          String   @default("sconto_reciproco") // sconto_reciproco | punti_condivisi | evento_congiunto
+  businessA     Business @relation("PartnerA", fields: [businessAId], references: [id], onDelete: Cascade)
+  businessB     Business @relation("PartnerB", fields: [businessBId], references: [id], onDelete: Cascade)
+  crossPromotions CrossPromotion[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([businessAId, businessBId])
+}
+
+model CrossPromotion {
+  id              String      @id @default(cuid())
+  partnershipId   String
+  fromBusinessId  String
+  toBusinessId    String
+  discountPercent Int         @default(10)
+  description     String
+  active          Boolean     @default(true)
+  expiresAt       DateTime?
+  partnership     Partnership @relation(fields: [partnershipId], references: [id], onDelete: Cascade)
+  fromBusiness    Business    @relation("PromoFrom", fields: [fromBusinessId], references: [id], onDelete: Cascade)
+  toBusiness      Business    @relation("PromoTo", fields: [toBusinessId], references: [id], onDelete: Cascade)
+  vouchers        Voucher[]
+  createdAt       DateTime    @default(now())
+}
+
+model Voucher {
+  id              String          @id @default(cuid())
+  businessId      String
+  crossPromotionId String?
+  code            String          @unique
+  discountPercent Int             @default(10)
+  description     String
+  customerPhone   String?
+  redeemed        Boolean         @default(false)
+  redeemedAt      DateTime?
+  expiresAt       DateTime
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  crossPromotion  CrossPromotion? @relation(fields: [crossPromotionId], references: [id])
+  createdAt       DateTime        @default(now())
+}
+
+// ─── PWA Push Notifications (Feature 9) ─────────────────────────
+
+model PushSubscription {
+  id           String   @id @default(cuid())
+  businessId   String?
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  userType     String   @default("owner") // owner | staff | customer
+  userId       String?
+  customerId   String?
+  business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+// ─── Security: Rate Limiting (Feature 10) ───────────────────────
+
+model RateLimit {
+  id         String   @id @default(cuid())
+  key        String   // e.g., "login:192.168.1.1" or "otp:+393331234567"
+  attempts   Int      @default(1)
+  windowStart DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([key])
 }
