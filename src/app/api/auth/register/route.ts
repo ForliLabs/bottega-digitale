@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword, createSession, setSessionCookie } from "@/lib/auth";
+import { checkRateLimit, validateInput } from "@/lib/security";
+import { seedDefaultFlows } from "@/lib/event-bus";
 
 function slugify(text: string): string {
   return text
@@ -18,10 +20,26 @@ export async function POST(request: Request) {
     const { email, password, name, businessName, businessCategory, address, phone } =
       await request.json();
 
-    if (!email || !password || !businessName) {
+    // Input validation
+    const errors = validateInput(
+      { email, password, businessName },
+      [
+        { field: "email", type: "email", required: true },
+        { field: "password", type: "string", required: true, minLength: 8, maxLength: 128 },
+        { field: "businessName", type: "string", required: true, minLength: 2, maxLength: 100 },
+      ]
+    );
+    if (errors.length > 0) {
+      return Response.json({ error: errors[0].message }, { status: 400 });
+    }
+
+    // Rate limiting
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const rateCheck = await checkRateLimit("register", ip);
+    if (!rateCheck.allowed) {
       return Response.json(
-        { error: "Email, password e nome attività sono obbligatori." },
-        { status: 400 }
+        { error: "Troppi tentativi di registrazione. Riprova più tardi." },
+        { status: 429 }
       );
     }
 
@@ -62,6 +80,9 @@ export async function POST(request: Request) {
     await prisma.membership.create({
       data: { userId: user.id, businessId: business.id, role: "owner" },
     });
+
+    // Seed default automation flows for new business
+    await seedDefaultFlows(business.id);
 
     const token = await createSession(user.id);
     await setSessionCookie(token);
