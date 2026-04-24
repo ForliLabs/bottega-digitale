@@ -55,6 +55,36 @@ const items = [
     icon: <span aria-hidden="true">📊</span>,
   },
   {
+    label: "Automazioni",
+    href: "/dashboard/automations",
+    icon: <span aria-hidden="true">⚡</span>,
+  },
+  {
+    label: "Operaio",
+    href: "/dashboard/jobs",
+    icon: <span aria-hidden="true">⏰</span>,
+  },
+  {
+    label: "Consigliere AI",
+    href: "/dashboard/advisor",
+    icon: <span aria-hidden="true">💡</span>,
+  },
+  {
+    label: "Team",
+    href: "/dashboard/staff",
+    icon: <span aria-hidden="true">👥</span>,
+  },
+  {
+    label: "Fatturazione",
+    href: "/dashboard/invoices",
+    icon: <span aria-hidden="true">🧾</span>,
+  },
+  {
+    label: "Rete",
+    href: "/dashboard/network",
+    icon: <span aria-hidden="true">🤝</span>,
+  },
+  {
     label: "Abbonamento",
     href: "/dashboard/billing",
     icon: <span aria-hidden="true">💳</span>,
