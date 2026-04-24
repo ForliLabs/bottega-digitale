@@ -1,0 +1,41 @@
+{
+  "name": "Bottega Digitale",
+  "short_name": "Bottega",
+  "description": "Toolkit digitale per botteghe, artigiani e piccole attività di Forlì.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FFFBEB",
+  "theme_color": "#F59E0B",
+  "orientation": "any",
+  "lang": "it",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Prenotazioni",
+      "short_name": "Prenota",
+      "url": "/dashboard/bookings",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Coda",
+      "short_name": "Coda",
+      "url": "/dashboard/queue",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

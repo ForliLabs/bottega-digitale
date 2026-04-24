@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
+import { PWARegistration } from "@/components/pwa-registration";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,6 +19,18 @@ export const metadata: Metadata = {
   title: "Bottega Digitale",
   description:
     "Toolkit digitale per botteghe, artigiani e piccole attività di Forlì.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Bottega Digitale",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#F59E0B",
+  width: "device-width",
+  initialScale: 1,
 };
 
 const navItems = [
@@ -51,6 +64,7 @@ export default function RootLayout({
             brand="Bottega Digitale"
             tagline="Il bancone digitale per artigiani, botteghe e piccole imprese di Forlì."
           />
+          <PWARegistration />
         </div>
       </body>
     </html>
