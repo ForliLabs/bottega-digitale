@@ -103,6 +103,32 @@ model Business {
   crossPromotionsReceived CrossPromotion[] @relation("PromoTo")
   vouchers               Voucher[]
   pushSubscriptions      PushSubscription[]
+  // Iter3: WhatsApp AI
+  whatsappAiEnabled      Boolean        @default(false)
+  whatsappAiPersonality  String         @default("amichevole") // formale | amichevole
+  whatsappAiFaqs         String         @default("[]") // JSON array of {q,a}
+  // Iter3: Product Catalog
+  catalogEnabled         Boolean        @default(false)
+  products               Product[]
+  productCategories      ProductCategory[]
+  orders                 Order[]
+  // Iter3: Payments
+  stripeConnectAccountId String?
+  depositPercentage      Int            @default(30)
+  depositsEnabled        Boolean        @default(false)
+  // Iter3: Notifications
+  notifications          Notification[]
+  // Iter3: Association
+  associationMemberships AssociationMembership[]
+  // Iter3: Accountant
+  accountantLinks        AccountantClientLink[]
+  // Iter3: i18n
+  locale                 String         @default("it")
+  // Iter3: Marketplace
+  giftCards              GiftCard[]
+  // Iter3: Platform Analytics
+  platformEvents         PlatformEvent[]
+  healthScore            BusinessHealthScore?
 }
 
 model Membership {
@@ -515,4 +541,282 @@ model RateLimit {
   expiresAt  DateTime
 
   @@index([key])
+}
+
+// ─── Iter3 Feature 1: WhatsApp Conversational AI ────────────────
+
+model ConversationState {
+  id          String   @id @default(cuid())
+  businessId  String
+  phone       String
+  context     String   @default("{}") // JSON: current intent, collected slots
+  lastIntent  String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([businessId, phone])
+}
+
+// ─── Iter3 Feature 2: Product Catalog & Storefront ──────────────
+
+model ProductCategory {
+  id          String    @id @default(cuid())
+  businessId  String
+  name        String
+  sortOrder   Int       @default(0)
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  businessId  String
+  categoryId  String?
+  name        String
+  description String           @default("")
+  priceEuro   Float
+  imageUrl    String?
+  stock       Int              @default(-1) // -1 = unlimited
+  isAvailable Boolean          @default(true)
+  sortOrder   Int              @default(0)
+  business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category    ProductCategory? @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  businessId     String
+  customerName   String
+  customerPhone  String?
+  customerEmail  String?
+  status         String      @default("ricevuto") // ricevuto | in_preparazione | pronto | consegnato | cancellato
+  channel        String      @default("online") // online | whatsapp
+  totalEuro      Float       @default(0)
+  paymentStatus  String      @default("pending") // pending | paid | refunded
+  paymentIntentId String?
+  notes          String?
+  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items          OrderItem[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  productId  String
+  quantity   Int     @default(1)
+  unitPrice  Float
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product @relation(fields: [productId], references: [id])
+}
+
+// ─── Iter3 Feature 3: Association White-Label Portal ────────────
+
+model Association {
+  id           String                  @id @default(cuid())
+  name         String
+  slug         String                  @unique
+  type         String                  @default("CNA") // CNA | Confartigianato | Confcommercio
+  city         String                  @default("Forlì")
+  logoUrl      String?
+  primaryColor String                  @default("#1E40AF")
+  contactEmail String
+  contactPhone String?
+  website      String?
+  memberships  AssociationMembership[]
+  admins       AssociationAdmin[]
+  subscription GroupSubscription?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+}
+
+model AssociationMembership {
+  id             String      @id @default(cuid())
+  associationId  String
+  businessId     String
+  status         String      @default("active") // active | suspended | invited
+  joinedAt       DateTime    @default(now())
+  association    Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([associationId, businessId])
+}
+
+model AssociationAdmin {
+  id             String      @id @default(cuid())
+  associationId  String
+  email          String
+  name           String
+  passwordHash   String
+  role           String      @default("admin") // admin | viewer
+  association    Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime    @default(now())
+}
+
+model GroupSubscription {
+  id              String      @id @default(cuid())
+  associationId   String      @unique
+  plan            String      @default("base") // base | premium
+  pricePerMember  Float       @default(15)
+  maxMembers      Int         @default(50)
+  status          String      @default("active") // active | cancelled | past_due
+  stripeSubId     String?
+  association     Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// ─── Iter3 Feature 4: Customer Payment Collection ───────────────
+
+model PaymentTransaction {
+  id              String   @id @default(cuid())
+  businessId      String
+  type            String   // deposit | full_payment | gift_card_purchase | gift_card_redemption
+  amountEuro      Float
+  currency        String   @default("EUR")
+  status          String   @default("pending") // pending | completed | refunded | failed
+  stripePaymentId String?
+  customerName    String?
+  customerPhone   String?
+  bookingId       String?
+  giftCardId      String?
+  platformFee     Float    @default(0)
+  netAmount       Float    @default(0)
+  createdAt       DateTime @default(now())
+}
+
+model GiftCard {
+  id              String   @id @default(cuid())
+  businessId      String?  // null = "Bottega Credits" (cross-business)
+  code            String   @unique
+  amountEuro      Float
+  balanceEuro     Float
+  purchaserName   String?
+  purchaserPhone  String?
+  recipientName   String?
+  recipientPhone  String?
+  message         String?
+  status          String   @default("active") // active | redeemed | expired
+  expiresAt       DateTime
+  business        Business? @relation(fields: [businessId], references: [id])
+  createdAt       DateTime @default(now())
+  redeemedAt      DateTime?
+}
+
+// ─── Iter3 Feature 6: Notification Center ───────────────────────
+
+model Notification {
+  id          String   @id @default(cuid())
+  businessId  String
+  type        String   // booking | payment | review | loyalty | queue | automation | system
+  title       String
+  body        String
+  read        Boolean  @default(false)
+  actionUrl   String?
+  priority    String   @default("normal") // low | normal | urgent
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// ─── Iter3 Feature 7: Accountant Portal ─────────────────────────
+
+model Accountant {
+  id           String                @id @default(cuid())
+  email        String                @unique
+  name         String
+  studio       String?
+  passwordHash String
+  referralCode String                @unique
+  clients      AccountantClientLink[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+}
+
+model AccountantClientLink {
+  id            String     @id @default(cuid())
+  accountantId  String
+  businessId    String
+  inviteCode    String     @unique
+  status        String     @default("pending") // pending | active | revoked
+  accountant    Accountant @relation(fields: [accountantId], references: [id], onDelete: Cascade)
+  business      Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+
+  @@unique([accountantId, businessId])
+}
+
+// ─── Iter3 Feature 8: i18n & Expansion Kit ──────────────────────
+
+model TranslationOverride {
+  id        String   @id @default(cuid())
+  locale    String
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+
+  @@unique([locale, key])
+}
+
+model RegionConfig {
+  id             String @id @default(cuid())
+  city           String @unique
+  region         String
+  defaultVatRate Float  @default(22)
+  associations   String @default("[]") // JSON array of association names
+  categories     String @default("[]") // JSON array of default business categories
+  active         Boolean @default(true)
+  createdAt      DateTime @default(now())
+}
+
+// ─── Iter3 Feature 9: Marketplace ───────────────────────────────
+
+model MarketplaceListing {
+  id          String   @id @default(cuid())
+  businessId  String
+  type        String   @default("service") // service | product
+  title       String
+  description String
+  priceEuro   Float?
+  category    String
+  imageUrl    String?
+  featured    Boolean  @default(false)
+  active      Boolean  @default(true)
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Iter3 Feature 10: Platform Analytics & Churn ───────────────
+
+model PlatformEvent {
+  id          String   @id @default(cuid())
+  businessId  String?
+  eventType   String   // page_view | feature_use | api_call | login | booking_created | payment_received
+  metadata    String   @default("{}") // JSON
+  business    Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([businessId, eventType])
+  @@index([createdAt])
+}
+
+model BusinessHealthScore {
+  id              String   @id @default(cuid())
+  businessId      String   @unique
+  score           Int      @default(100) // 0-100
+  riskTier        String   @default("healthy") // healthy | at_risk | churning
+  loginFrequency7d Int     @default(0)
+  loginFrequency30d Int    @default(0)
+  featureBreadth  Int      @default(0) // number of modules used
+  bookingTrend    String   @default("stable") // growing | stable | declining
+  lastCalculated  DateTime @default(now())
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
