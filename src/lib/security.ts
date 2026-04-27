@@ -193,6 +193,12 @@ const ENV_SCHEMA: EnvVar[] = [
   { key: "CRON_SECRET", required: false, description: "Secret for cron job endpoints" },
   { key: "VAPID_PUBLIC_KEY", required: false, description: "VAPID public key for push notifications" },
   { key: "VAPID_PRIVATE_KEY", required: false, description: "VAPID private key for push notifications" },
+  { key: "RESEND_API_KEY", required: false, description: "Resend API key for transactional email" },
+  { key: "MEDIA_STORAGE_ENDPOINT", required: false, description: "S3-compatible media storage endpoint" },
+  { key: "MEDIA_STORAGE_KEY", required: false, description: "Media storage access key" },
+  { key: "MEDIA_STORAGE_SECRET", required: false, description: "Media storage secret key" },
+  { key: "MEDIA_STORAGE_BUCKET", required: false, description: "Media storage bucket name" },
+  { key: "WEBHOOK_SIGNING_SECRET", required: false, description: "Webhook HMAC signing secret" },
 ];
 
 export function validateEnvironment(): { valid: boolean; missing: string[]; warnings: string[] } {
