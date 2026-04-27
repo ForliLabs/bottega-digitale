@@ -85,9 +85,24 @@ const items = [
     icon: <span aria-hidden="true">🤝</span>,
   },
   {
+    label: "Prodotti",
+    href: "/dashboard/products",
+    icon: <span aria-hidden="true">🛍️</span>,
+  },
+  {
+    label: "Pagamenti",
+    href: "/dashboard/payments",
+    icon: <span aria-hidden="true">💳</span>,
+  },
+  {
+    label: "Notifiche",
+    href: "/dashboard/notifications",
+    icon: <span aria-hidden="true">🔔</span>,
+  },
+  {
     label: "Abbonamento",
     href: "/dashboard/billing",
-    icon: <span aria-hidden="true">💳</span>,
+    icon: <span aria-hidden="true">💰</span>,
   },
 ];
 
