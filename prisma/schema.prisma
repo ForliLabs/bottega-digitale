@@ -129,6 +129,10 @@ model Business {
   // Iter3: Platform Analytics
   platformEvents         PlatformEvent[]
   healthScore            BusinessHealthScore?
+  // Iter4
+  mediaAssets            MediaAsset[]
+  apiKeys                ApiKey[]
+  webhookEndpoints       WebhookEndpoint[]
 }
 
 model Membership {
@@ -819,4 +823,120 @@ model BusinessHealthScore {
   business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ─── Iter4 Feature 2: Media Pipeline ────────────────────────────
+
+model MediaAsset {
+  id          String   @id @default(cuid())
+  businessId  String
+  filename    String
+  mimeType    String
+  sizeBytes   Int
+  url         String   // CDN URL
+  thumbnailUrl String? // 200px variant
+  mediumUrl   String?  // 600px variant
+  width       Int?
+  height      Int?
+  alt         String?
+  folder      String   @default("general") // general | products | social | logo | hero
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([businessId, folder])
+}
+
+// ─── Iter4 Feature 7: Webhook API & Developer Platform ──────────
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  keyHash     String   @unique
+  keyPrefix   String   // e.g., "sk_live_abc..."
+  scopes      String   @default("read") // comma-separated: read,write,webhooks
+  rateLimit   Int      @default(1000) // requests per hour
+  lastUsedAt  DateTime?
+  active      Boolean  @default(true)
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(cuid())
+  businessId  String
+  url         String
+  events      String   @default("*") // comma-separated event types or * for all
+  secret      String   // HMAC signing secret
+  active      Boolean  @default(true)
+  failCount   Int      @default(0)
+  lastDeliveryAt DateTime?
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  endpointId  String
+  event       String
+  payload     String   // JSON
+  responseCode Int?
+  responseBody String?
+  attempts    Int      @default(1)
+  status      String   @default("pending") // pending | delivered | failed
+  nextRetryAt DateTime?
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// ─── Iter4 Feature 10: GDPR Compliance ──────────────────────────
+
+model CustomerConsent {
+  id                String   @id @default(cuid())
+  customerId        String
+  businessId        String
+  whatsappMarketing Boolean  @default(false)
+  whatsappTransactional Boolean @default(true)
+  emailMarketing    Boolean  @default(false)
+  emailTransactional Boolean @default(true)
+  pushNotifications Boolean  @default(true)
+  analyticsTracking Boolean  @default(true)
+  thirdPartySharing Boolean  @default(false)
+  consentedAt       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([customerId, businessId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorType   String   // owner | staff | accountant | association_admin | system | customer
+  actorId     String
+  action      String   // data_access | data_export | data_delete | consent_change | login
+  resource    String   // customer | booking | invoice | payment
+  resourceId  String?
+  businessId  String?
+  details     String   @default("{}") // JSON
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([businessId, action])
+  @@index([actorId, actorType])
+}
+
+model DataExportRequest {
+  id          String   @id @default(cuid())
+  businessId  String?
+  customerId  String?
+  requestType String   // customer_data | business_data
+  status      String   @default("pending") // pending | processing | completed | failed
+  format      String   @default("json") // json | csv
+  downloadUrl String?
+  expiresAt   DateTime?
+  requestedBy String   // actor ID
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
 }
