@@ -151,8 +151,8 @@ describe("Webhook API — OpenAPI Spec", () => {
   it("should include essential paths", () => {
     const spec = generateOpenAPISpec();
     const paths = spec.paths as Record<string, unknown>;
-    expect(paths["/bookings"]).toBeDefined();
-    expect(paths["/customers"]).toBeDefined();
-    expect(paths["/orders"]).toBeDefined();
+    expect(paths["/api/bookings"]).toBeDefined();
+    expect(paths["/api/customers"]).toBeDefined();
+    expect(paths["/api/orders"]).toBeDefined();
   });
 });
