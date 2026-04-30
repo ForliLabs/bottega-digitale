@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { generateBusinessMetadata, generateLocalBusinessJsonLd, generateBreadcrumbJsonLd } from "@/lib/seo";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -12,15 +13,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const business = await prisma.business.findUnique({ where: { slug } });
   if (!business) return { title: "Pagina non trovata" };
-  return {
-    title: `${business.name} — ${business.category} a ${business.city}`,
-    description: business.description,
-    openGraph: {
-      title: business.name,
-      description: business.description,
-      type: "website",
-    },
-  };
+  return generateBusinessMetadata(business);
 }
 
 function renderStars(rating: number) {
@@ -47,8 +40,36 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
       ? business.reviews.reduce((sum, r) => sum + r.rating, 0) / business.reviews.length
       : 0;
 
+  const localBusinessJsonLd = generateLocalBusinessJsonLd({
+    name: business.name,
+    slug: business.slug,
+    category: business.category,
+    description: business.description,
+    address: business.address,
+    city: business.city,
+    phone: business.phone,
+    email: business.email,
+    openingHours,
+    avgRating: avgRating > 0 ? avgRating : undefined,
+    reviewCount: business.reviews.length > 0 ? business.reviews.length : undefined,
+  });
+
+  const breadcrumbJsonLd = generateBreadcrumbJsonLd([
+    { name: "Bottega Digitale", url: "/" },
+    { name: "Directory", url: "/directory" },
+    { name: business.name, url: `/s/${business.slug}` },
+  ]);
+
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {/* Hero */}
       <section className="bg-gradient-to-br from-amber-50 via-white to-orange-50 px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-4xl text-center">
