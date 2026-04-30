@@ -940,3 +940,68 @@ model DataExportRequest {
   createdAt   DateTime @default(now())
   completedAt DateTime?
 }
+
+// ─── Iter5 Feature 8: Email Delivery Tracking ───────────────────
+
+model EmailDelivery {
+  id          String   @id @default(cuid())
+  businessId  String?
+  template    String   // booking_confirmation | payment_receipt | etc.
+  to          String
+  subject     String
+  status      String   @default("sent") // sent | delivered | bounced | opened | clicked
+  messageId   String?  // Resend message ID
+  locale      String   @default("it")
+  openedAt    DateTime?
+  clickedAt   DateTime?
+  bouncedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([businessId, template])
+  @@index([status])
+}
+
+model EmailTemplateOverride {
+  id          String   @id @default(cuid())
+  businessId  String
+  template    String   // template key
+  locale      String   @default("it")
+  subject     String?  // custom subject override
+  greeting    String?  // custom greeting text
+  footer      String?  // custom footer text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([businessId, template, locale])
+}
+
+// ─── Iter5 Feature 9: Notification Preferences ──────────────────
+
+model NotificationPreference {
+  id                String   @id @default(cuid())
+  customerId        String
+  businessId        String
+  preferredChannel  String   @default("email") // whatsapp | email | push
+  quietHoursStart   String   @default("22:00") // HH:MM
+  quietHoursEnd     String   @default("08:00") // HH:MM
+  digestEnabled     Boolean  @default(false)
+  digestTime        String   @default("09:00") // HH:MM
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([customerId, businessId])
+}
+
+model NotificationLog {
+  id          String   @id @default(cuid())
+  businessId  String
+  customerId  String?
+  eventType   String   // booking.created | payment.received | etc.
+  channel     String   // whatsapp | email | push | digest
+  status      String   @default("sent") // sent | delivered | failed | suppressed | digested
+  reason      String?  // suppression reason
+  createdAt   DateTime @default(now())
+
+  @@index([businessId, customerId])
+  @@index([eventType, status])
+}
