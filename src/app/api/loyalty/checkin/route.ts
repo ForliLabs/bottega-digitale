@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Find customer by ID or phone
-    let customer = customerId
+    const customer = customerId
       ? await prisma.customer.findFirst({ where: { id: customerId, businessId } })
       : customerPhone
         ? await prisma.customer.findFirst({ where: { phone: customerPhone, businessId } })

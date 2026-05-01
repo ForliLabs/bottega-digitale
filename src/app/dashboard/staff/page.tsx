@@ -24,7 +24,7 @@ export default async function StaffPage() {
     createdAt: Date;
   }[] = [];
 
-  let staffStats: Record<string, { totalBookings: number; revenue: number }> = {};
+  const staffStats: Record<string, { totalBookings: number; revenue: number }> = {};
 
   if (business) {
     staff = await prisma.staffProfile.findMany({
