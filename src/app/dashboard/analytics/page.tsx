@@ -20,6 +20,7 @@ export default async function AnalyticsPage() {
     totalCustomers,
     reviews,
     totalRevenue,
+    bookingChannels,
   ] = business
     ? await Promise.all([
         prisma.booking.count({
@@ -44,13 +45,30 @@ export default async function AnalyticsPage() {
           where: { businessId: business.id, createdAt: { gte: startOfMonth } },
           _sum: { priceEuro: true },
         }),
+        prisma.booking.groupBy({
+          by: ["channel"],
+          where: { businessId: business.id, createdAt: { gte: startOfMonth } },
+          _count: true,
+        }),
       ])
-    : [0, 0, 0, 0, { _avg: { rating: 0 }, _count: 0 }, { _sum: { priceEuro: 0 } }];
+    : [0, 0, 0, 0, { _avg: { rating: 0 }, _count: 0 }, { _sum: { priceEuro: 0 } }, []];
 
   const bookingGrowth =
     bookingsLastMonth > 0
       ? Math.round(((bookingsThisMonth - bookingsLastMonth) / bookingsLastMonth) * 100)
       : 0;
+
+  const totalChannelBookings = bookingChannels.reduce((sum, entry) => sum + entry._count, 0);
+  const bookingChannelDistribution = ["Sito web", "WhatsApp", "Instagram", "Telefono"].map((channel) => {
+    const count = bookingChannels.find((entry) => entry.channel === channel)?._count || 0;
+    const percentage = totalChannelBookings > 0 ? Math.round((count / totalChannelBookings) * 100) : 0;
+    return {
+      channel,
+      count,
+      percentage,
+      width: percentage > 0 ? Math.max(percentage, 12) : 8,
+    };
+  });
 
   return (
     <div className="space-y-8">
@@ -119,17 +137,16 @@ export default async function AnalyticsPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">📈 Canali di prenotazione</h2>
           <div className="mt-4 space-y-3">
-            {["Sito web", "WhatsApp", "Instagram", "Telefono"].map((channel) => (
-              <div key={channel} className="flex items-center gap-3">
-                <span className="w-24 text-sm text-slate-600">{channel}</span>
+            {bookingChannelDistribution.map((channel) => (
+              <div key={channel.channel} className="flex items-center gap-3">
+                <span className="w-24 text-sm text-slate-600">{channel.channel}</span>
                 <div className="flex-1 rounded-full bg-slate-100">
                   <div
                     className="h-3 rounded-full bg-amber-500"
-                    style={{
-                      width: `${Math.floor(Math.random() * 60 + 20)}%`,
-                    }}
+                    style={{ width: `${channel.width}%` }}
                   />
                 </div>
+                <span className="w-12 text-right text-xs text-slate-500">{channel.percentage}%</span>
               </div>
             ))}
           </div>
