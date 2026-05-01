@@ -33,25 +33,23 @@ export default function CustomerPortalPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  const [view, setView] = useState<PortalView>("login");
+  const storageKey = `customer_token_${slug}`;
+  const [view, setView] = useState<PortalView>(() => {
+    if (typeof window === "undefined") return "login";
+    return localStorage.getItem(storageKey) ? "dashboard" : "login";
+  });
   const [phone, setPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [sessionId, setSessionId] = useState("");
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem(storageKey) || "";
+  });
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loyaltyCards, setLoyaltyCards] = useState<LoyaltyCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Check for existing token in localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem(`customer_token_${slug}`);
-    if (saved) {
-      setToken(saved);
-      setView("dashboard");
-    }
-  }, [slug]);
 
   const fetchDashboard = useCallback(async (t: string) => {
     try {
@@ -59,7 +57,8 @@ export default function CustomerPortalPage() {
         headers: { "x-customer-token": t },
       });
       if (!res.ok) {
-        localStorage.removeItem(`customer_token_${slug}`);
+        localStorage.removeItem(storageKey);
+        setToken("");
         setView("login");
         return;
       }
@@ -70,12 +69,16 @@ export default function CustomerPortalPage() {
     } catch {
       setError("Errore di connessione");
     }
-  }, [slug]);
+  }, [storageKey]);
 
   useEffect(() => {
-    if (token && view === "dashboard") {
-      fetchDashboard(token);
-    }
+    if (!(token && view === "dashboard")) return;
+
+    const loadDashboard = window.setTimeout(() => {
+      void fetchDashboard(token);
+    }, 0);
+
+    return () => window.clearTimeout(loadDashboard);
   }, [token, view, fetchDashboard]);
 
   const handleRequestOTP = async () => {
@@ -110,7 +113,7 @@ export default function CustomerPortalPage() {
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
       setToken(data.token);
-      localStorage.setItem(`customer_token_${slug}`, data.token);
+      localStorage.setItem(storageKey, data.token);
       setView("dashboard");
     } catch {
       setError("Errore di connessione");
