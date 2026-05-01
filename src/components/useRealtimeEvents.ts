@@ -29,7 +29,10 @@ export function useRealtimeEvents(
   const reconnectAttempts = useRef(0);
   const eventSourceRef = useRef<EventSource | null>(null);
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   const handleMessage = useCallback(
     (messageEvent: MessageEvent) => {
@@ -50,7 +53,10 @@ export function useRealtimeEvents(
 
     // Check if SSE is supported
     if (typeof EventSource === "undefined") {
-      setConnectionMode("polling");
+      const modeTimeout = window.setTimeout(() => {
+        setConnectionMode("polling");
+      }, 0);
+
       // Polling fallback
       const interval = setInterval(async () => {
         try {
@@ -72,7 +78,10 @@ export function useRealtimeEvents(
         }
       }, pollingFallbackMs);
 
-      return () => clearInterval(interval);
+      return () => {
+        window.clearTimeout(modeTimeout);
+        clearInterval(interval);
+      };
     }
 
     // SSE connection
@@ -110,8 +119,6 @@ export function useRealtimeEvents(
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
-      setConnected(false);
-      setConnectionMode("disconnected");
     };
   }, [enabled, handleMessage, pollingFallbackMs]);
 
