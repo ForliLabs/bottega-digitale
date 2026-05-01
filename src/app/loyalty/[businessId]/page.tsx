@@ -19,19 +19,18 @@ export default function LoyaltyPublicPage({
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = use(params);
+  const [customerId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("c") || "";
+  });
   const [data, setData] = useState<LoyaltyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(() => customerId.length > 0);
+  const [error, setError] = useState(() =>
+    customerId ? "" : "Link non valido. Chiedi al negozio il tuo link personale.",
+  );
 
-  // Get customerId from URL search params
   useEffect(() => {
-    const search = new URLSearchParams(window.location.search);
-    const customerId = search.get("c");
-    if (!customerId) {
-      setError("Link non valido. Chiedi al negozio il tuo link personale.");
-      setLoading(false);
-      return;
-    }
+    if (!customerId) return;
 
     fetch(`/api/loyalty?businessId=${businessId}&customerId=${customerId}`)
       .then((r) => r.json())
@@ -41,7 +40,7 @@ export default function LoyaltyPublicPage({
       })
       .catch(() => setError("Errore di connessione."))
       .finally(() => setLoading(false));
-  }, [businessId]);
+  }, [businessId, customerId]);
 
   if (loading) {
     return (
