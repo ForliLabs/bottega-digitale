@@ -1,3 +1,27 @@
+/**
+ * @module event-bus
+ * Automation engine connecting business events to configurable action pipelines.
+ *
+ * When a business event fires (e.g., `booking.created`), the engine looks up
+ * matching `AutomationFlow` records and executes their action chains sequentially.
+ * Actions include WhatsApp messaging, loyalty point awards, CRM updates,
+ * social post generation, and insight logging.
+ *
+ * @example
+ * ```ts
+ * // Emit an event — all matching flows execute automatically
+ * const results = await emitEvent({
+ *   type: "booking.created",
+ *   businessId: "biz_123",
+ *   data: { customerName: "Marco", customerPhone: "+39 333 1234567" },
+ *   timestamp: new Date(),
+ * });
+ *
+ * // Seed default automation flows for a new business
+ * await seedDefaultFlows(businessId);
+ * ```
+ */
+
 // Automation Engine — Event Bus & Flow Execution
 // Connects booking→loyalty→WhatsApp→CRM into configurable trigger→action pipelines
 

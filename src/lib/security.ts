@@ -1,3 +1,26 @@
+/**
+ * @module security
+ * Security hardening utilities: rate limiting, CSRF protection, input validation,
+ * output sanitization, security headers, and environment validation.
+ *
+ * Rate limiting is database-backed (Prisma `RateLimit` model) with configurable
+ * per-category windows. CSRF tokens use constant-time comparison to prevent
+ * timing attacks.
+ *
+ * @example
+ * ```ts
+ * // Check rate limit before processing login
+ * const { allowed, remaining } = await checkRateLimit("login", userEmail);
+ * if (!allowed) return Response.json({ error: "Troppi tentativi" }, { status: 429 });
+ *
+ * // Validate input
+ * const errors = validateInput(body, [
+ *   { field: "email", type: "email", required: true },
+ *   { field: "name", type: "string", required: true, minLength: 2 },
+ * ]);
+ * ```
+ */
+
 // Security Hardening Utilities
 // Rate limiting, CSRF protection, input validation, and security headers
 
