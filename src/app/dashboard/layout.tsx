@@ -70,6 +70,11 @@ const items = [
     icon: <span aria-hidden="true">💡</span>,
   },
   {
+    label: "Moonshot Lab",
+    href: "/dashboard/moonshot",
+    icon: <span aria-hidden="true">🚀</span>,
+  },
+  {
     label: "Team",
     href: "/dashboard/staff",
     icon: <span aria-hidden="true">👥</span>,
