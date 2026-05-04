@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "@/lib/event-bus";
+import { checkRateLimit, validateInput } from "@/lib/security";
+import { isValidPhoneNumber, normalizePhoneNumber } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +10,27 @@ export async function POST(request: Request) {
   try {
     const payload = await request.json();
     const { businessId, slug, serviceId, serviceName, startsAt, customerName, customerPhone, notes } = payload;
+    const normalizedPhone = customerPhone ? normalizePhoneNumber(customerPhone) : undefined;
 
-    if (!customerName || !startsAt) {
-      return Response.json({ error: "Nome e orario sono obbligatori" }, { status: 400 });
+    const errors = validateInput(
+      {
+        customerName,
+        startsAt,
+        customerPhone: normalizedPhone,
+      },
+      [
+        { field: "customerName", type: "string", required: true, minLength: 2, maxLength: 80 },
+        { field: "startsAt", type: "date", required: true },
+        { field: "customerPhone", type: "phone" },
+      ],
+    );
+
+    if (errors.length > 0) {
+      return Response.json({ error: errors[0].message }, { status: 400 });
+    }
+
+    if (normalizedPhone && !isValidPhoneNumber(normalizedPhone)) {
+      return Response.json({ error: "Numero di telefono non valido" }, { status: 400 });
     }
 
     // Resolve business
@@ -29,46 +49,61 @@ export async function POST(request: Request) {
       return Response.json({ error: "Prenotazioni online non attive per questa attività" }, { status: 403 });
     }
 
+    const rateLimitKey = normalizedPhone || request.headers.get("x-forwarded-for") || "anonymous";
+    const rateLimit = await checkRateLimit("booking", `${business.id}:${rateLimitKey}`);
+    if (!rateLimit.allowed) {
+      return Response.json({ error: "Troppi tentativi di prenotazione. Riprova più tardi." }, { status: 429 });
+    }
+
     // Resolve service
     let resolvedServiceName = serviceName || "Servizio generico";
     let durationMinutes = 30;
     let priceEuro = 0;
 
     if (serviceId) {
-      const service = await prisma.service.findUnique({ where: { id: serviceId } });
-      if (service) {
-        resolvedServiceName = service.name;
-        durationMinutes = service.durationMinutes;
-        priceEuro = service.priceEuro;
+      const service = await prisma.service.findFirst({ where: { id: serviceId, businessId: business.id } });
+      if (!service) {
+        return Response.json({ error: "Servizio non disponibile" }, { status: 404 });
       }
+      resolvedServiceName = service.name;
+      durationMinutes = service.durationMinutes;
+      priceEuro = service.priceEuro;
     }
 
-    // Check for double-booking (optimistic locking)
     const bookingStart = new Date(startsAt);
+    if (Number.isNaN(bookingStart.getTime()) || bookingStart <= new Date()) {
+      return Response.json({ error: "Seleziona un orario futuro valido" }, { status: 400 });
+    }
+
     const bookingEnd = new Date(bookingStart.getTime() + durationMinutes * 60 * 1000);
 
-    const conflicts = await prisma.booking.count({
+    const activeBookings = await prisma.booking.findMany({
       where: {
         businessId: business.id,
         status: { in: ["Confermata", "In attesa"] },
-        startsAt: { lt: bookingEnd },
-        AND: {
-          startsAt: {
-            gte: new Date(bookingStart.getTime() - durationMinutes * 60 * 1000),
-          },
+        startsAt: {
+          gte: new Date(bookingStart.getTime() - 24 * 60 * 60 * 1000),
+          lte: new Date(bookingEnd.getTime() + 24 * 60 * 60 * 1000),
         },
       },
+      select: { startsAt: true, durationMinutes: true },
     });
 
-    if (conflicts > 0) {
+    const conflicts = activeBookings.some((booking) => {
+      const existingStart = new Date(booking.startsAt);
+      const existingEnd = new Date(existingStart.getTime() + booking.durationMinutes * 60 * 1000);
+      return bookingStart < existingEnd && bookingEnd > existingStart;
+    });
+
+    if (conflicts) {
       return Response.json({ error: "Questo orario non è più disponibile. Scegli un altro slot." }, { status: 409 });
     }
 
     // Find or create customer
     let customerId: string | null = null;
-    if (customerPhone) {
+    if (normalizedPhone) {
       const existingCustomer = await prisma.customer.findFirst({
-        where: { businessId: business.id, phone: customerPhone },
+        where: { businessId: business.id, phone: normalizedPhone },
       });
 
       if (existingCustomer) {
@@ -82,17 +117,16 @@ export async function POST(request: Request) {
           data: {
             businessId: business.id,
             name: customerName,
-            phone: customerPhone,
+            phone: normalizedPhone,
             lastVisit: new Date(),
           },
         });
         customerId = newCustomer.id;
 
-        // Emit customer.created event
         await emitEvent({
           type: "customer.created",
           businessId: business.id,
-          data: { customerId: newCustomer.id, customerName, customerPhone },
+          data: { customerId: newCustomer.id, customerName, customerPhone: normalizedPhone },
           timestamp: new Date(),
         });
       }
@@ -105,7 +139,7 @@ export async function POST(request: Request) {
         customerId,
         serviceId: serviceId || null,
         customerName,
-        customerPhone: customerPhone || null,
+        customerPhone: normalizedPhone || null,
         service: resolvedServiceName,
         startsAt: bookingStart,
         durationMinutes,
@@ -124,7 +158,7 @@ export async function POST(request: Request) {
         bookingId: booking.id,
         customerId,
         customerName,
-        customerPhone,
+        customerPhone: normalizedPhone,
         service: resolvedServiceName,
         startsAt: bookingStart.toISOString(),
       },
