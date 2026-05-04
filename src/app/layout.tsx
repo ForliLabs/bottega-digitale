@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { PWARegistration } from "@/components/pwa-registration";
+import { ToastProvider } from "@/components/ui/toast-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -52,20 +53,25 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-amber-50 text-slate-900">
-        <div className="flex min-h-screen flex-col">
-          <Navbar
-            brand="Bottega Digitale"
-            items={navItems}
-            ctaLabel="Apri la demo"
-            ctaHref="/dashboard"
-          />
-          <main className="flex-1">{children}</main>
-          <Footer
-            brand="Bottega Digitale"
-            tagline="Il bancone digitale per artigiani, botteghe e piccole imprese di Forlì."
-          />
-          <PWARegistration />
-        </div>
+        <ToastProvider>
+          <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[120] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold">
+            Vai al contenuto principale
+          </a>
+          <div className="flex min-h-screen flex-col">
+            <Navbar
+              brand="Bottega Digitale"
+              items={navItems}
+              ctaLabel="Apri la demo"
+              ctaHref="/dashboard"
+            />
+            <main id="main-content" className="flex-1">{children}</main>
+            <Footer
+              brand="Bottega Digitale"
+              tagline="Il bancone digitale per artigiani, botteghe e piccole imprese di Forlì."
+            />
+            <PWARegistration />
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );
