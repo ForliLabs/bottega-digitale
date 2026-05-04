@@ -3,8 +3,8 @@
  * Authentication and session management for business owners.
  *
  * Uses cookie-based sessions with 30-day expiry. Passwords are hashed with
- * SHA-256 via the Web Crypto API (no external dependencies). In demo mode
- * (no authenticated user), falls back to the first seeded business.
+ * scrypt using a per-password random salt. In demo mode (no authenticated user),
+ * page-level helpers can still fall back to the first seeded business.
  *
  * @example
  * ```ts
@@ -17,39 +17,75 @@
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import type { Business, User } from "@/generated/prisma/client";
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+
+function scrypt(
+  password: string,
+  salt: string,
+  keyLength: number,
+  options: { N: number; r: number; p: number },
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCallback(password, salt, keyLength, options, (error, derivedKey) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(derivedKey);
+    });
+  });
+}
+const PASSWORD_VERSION = "scrypt";
+const PASSWORD_COST = 16384;
+const PASSWORD_BLOCK_SIZE = 8;
+const PASSWORD_PARALLELIZATION = 1;
+const PASSWORD_KEY_LENGTH = 64;
 
 /**
- * Hash a password using SHA-256 with a fixed salt.
+ * Hash a password using scrypt with a per-password random salt.
  * @param password - The plaintext password to hash.
- * @returns Hex-encoded SHA-256 hash.
+ * @returns Encoded scrypt hash.
  */
 export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + "bottega-salt-2025");
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const salt = randomBytes(16).toString("hex");
+  const derivedKey = await scrypt(password, salt, PASSWORD_KEY_LENGTH, {
+    N: PASSWORD_COST,
+    r: PASSWORD_BLOCK_SIZE,
+    p: PASSWORD_PARALLELIZATION,
+  }) as Buffer;
+
+  return [PASSWORD_VERSION, PASSWORD_COST, salt, derivedKey.toString("hex")].join("$");
 }
 
 /**
  * Verify a password against a stored hash.
  * @param password - The plaintext password to verify.
- * @param hash - The stored SHA-256 hex hash.
+ * @param hash - The stored password hash.
  * @returns `true` if the password matches.
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const computed = await hashPassword(password);
-  return computed === hash;
+  const [version, costRaw, salt, storedHash] = hash.split("$");
+  if (version !== PASSWORD_VERSION || !salt || !storedHash) {
+    return false;
+  }
+
+  const derivedKey = await scrypt(password, salt, storedHash.length / 2, {
+    N: Number(costRaw) || PASSWORD_COST,
+    r: PASSWORD_BLOCK_SIZE,
+    p: PASSWORD_PARALLELIZATION,
+  }) as Buffer;
+  const storedBuffer = Buffer.from(storedHash, "hex");
+
+  if (derivedKey.length !== storedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(derivedKey, storedBuffer);
 }
 
 /** Generate a cryptographically random 64-character hex token. */
 export function generateToken(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return randomBytes(32).toString("hex");
 }
 
 /**
@@ -138,4 +174,13 @@ export async function getBusinessContext(): Promise<Business | null> {
 
   // Fallback to first business (demo mode)
   return prisma.business.findFirst();
+}
+
+/**
+ * Get the current business context for authenticated routes only.
+ * Returns `null` when the requester is not authenticated.
+ */
+export async function requireBusinessContext(): Promise<Business | null> {
+  const auth = await getAuthContext();
+  return auth?.business ?? null;
 }

@@ -1,7 +1,7 @@
 // Database placeholder - each project will configure its own data layer
 // For MVP, we use in-memory data stores; swap for Prisma/database in production
 
-export type DbRecord = Record<string, unknown>;
+export type DbRecord = object;
 
 export class InMemoryStore<T extends DbRecord & { id: string }> {
   private data: Map<string, T> = new Map();
