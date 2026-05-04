@@ -1,8 +1,11 @@
 // Stripe Billing Service
 // Configure with STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET env vars
 
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const WEBHOOK_TOLERANCE_SECONDS = 300;
 
 export const PRICING_TIERS = {
   vetrina: { name: "Vetrina", priceMonthly: 0, stripePriceId: process.env.STRIPE_PRICE_VETRINA },
@@ -24,7 +27,16 @@ async function stripeRequest(endpoint: string, options: RequestInit = {}) {
       ...options.headers,
     },
   });
-  return res.json();
+  const payload = await res.json();
+
+  if (!res.ok) {
+    const message = typeof payload?.error?.message === "string"
+      ? payload.error.message
+      : "Errore Stripe";
+    throw new Error(message);
+  }
+
+  return payload;
 }
 
 export async function createCheckoutSession(params: {
@@ -68,9 +80,37 @@ export async function createCustomerPortalSession(customerId: string, returnUrl:
 
 export function verifyWebhookSignature(payload: string, signature: string): boolean {
   if (!STRIPE_WEBHOOK_SECRET) return false;
-  // In production, use Stripe SDK for proper signature verification
-  // This is a placeholder that checks the signature header exists
-  return signature.includes("t=") && signature.includes("v1=");
+
+  const parts = Object.fromEntries(
+    signature.split(",").map((part) => {
+      const [key, value] = part.split("=");
+      return [key, value];
+    }),
+  );
+  const timestamp = Number(parts.t);
+  const providedSignature = parts.v1;
+
+  if (!timestamp || !providedSignature) {
+    return false;
+  }
+
+  const ageInSeconds = Math.abs(Date.now() / 1000 - timestamp);
+  if (ageInSeconds > WEBHOOK_TOLERANCE_SECONDS) {
+    return false;
+  }
+
+  const expectedSignature = createHmac("sha256", STRIPE_WEBHOOK_SECRET)
+    .update(`${timestamp}.${payload}`)
+    .digest("hex");
+
+  const providedBuffer = Buffer.from(providedSignature, "hex");
+  const expectedBuffer = Buffer.from(expectedSignature, "hex");
+
+  if (providedBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
 export function isStripeConfigured(): boolean {

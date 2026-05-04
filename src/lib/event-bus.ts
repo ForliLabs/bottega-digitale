@@ -83,7 +83,7 @@ const actionHandlers: Record<ActionType, (businessId: string, params: Record<str
         direction: "outbound",
         phone,
         body: message,
-        status: "sent",
+        status: process.env.WHATSAPP_TOKEN ? "sent" : "queued",
         templateId: null,
       },
     });
@@ -102,7 +102,7 @@ const actionHandlers: Record<ActionType, (businessId: string, params: Record<str
         direction: "outbound",
         phone,
         body: `[Template: ${templateId}]`,
-        status: "sent",
+        status: process.env.WHATSAPP_TOKEN ? "sent" : "queued",
         templateId,
       },
     });
