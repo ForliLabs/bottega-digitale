@@ -1,19 +1,29 @@
-import { registerAccountant, authenticateAccountant, claimInviteCode, getAccountantDashboard, getClientFinancialData, generateInvoiceCSV } from "@/lib/accountant-portal";
+import {
+  registerAccountant,
+  authenticateAccountant,
+  claimInviteCode,
+  getAccountantDashboard,
+  getClientFinancialData,
+  generateInvoiceCSV,
+  createAccountantSessionToken,
+  getAuthenticatedAccountant,
+  setAccountantSessionCookie,
+  clearAccountantSessionCookie,
+} from "@/lib/accountant-portal";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const accountantId = searchParams.get("accountantId");
   const businessId = searchParams.get("businessId");
+  const accountant = await getAuthenticatedAccountant();
 
-  if (!accountantId) {
-    return Response.json({ error: "accountantId richiesto" }, { status: 400 });
+  if (!accountant) {
+    return Response.json({ error: "Sessione commercialista non valida" }, { status: 401 });
   }
 
   if (businessId) {
-    // Get specific client's financial data
-    const data = await getClientFinancialData(accountantId, businessId);
+    const data = await getClientFinancialData(accountant.id, businessId);
     if (!data) {
       return Response.json({ error: "Accesso non autorizzato" }, { status: 403 });
     }
@@ -33,7 +43,7 @@ export async function GET(request: Request) {
   }
 
   // Get dashboard overview
-  const dashboard = await getAccountantDashboard(accountantId);
+  const dashboard = await getAccountantDashboard(accountant.id);
   return Response.json(dashboard);
 }
 
@@ -59,11 +69,22 @@ export async function POST(request: Request) {
       if (!accountant) {
         return Response.json({ error: "Credenziali non valide" }, { status: 401 });
       }
+      const token = createAccountantSessionToken(accountant.id);
+      await setAccountantSessionCookie(token);
       return Response.json({ id: accountant.id, name: accountant.name });
     }
 
+    if (payload.action === "logout") {
+      await clearAccountantSessionCookie();
+      return Response.json({ ok: true });
+    }
+
     if (payload.action === "claim_invite") {
-      const result = await claimInviteCode(payload.accountantId, payload.inviteCode);
+      const accountant = await getAuthenticatedAccountant();
+      if (!accountant) {
+        return Response.json({ error: "Sessione commercialista non valida" }, { status: 401 });
+      }
+      const result = await claimInviteCode(accountant.id, payload.inviteCode);
       if ("error" in result) {
         return Response.json({ error: result.error }, { status: 400 });
       }

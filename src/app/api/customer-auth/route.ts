@@ -1,5 +1,7 @@
 import { requestCustomerOTP, verifyCustomerOTP, getCustomerFromToken } from "@/lib/customer-auth";
 import { prisma } from "@/lib/prisma";
+import { validateInput } from "@/lib/security";
+import { isValidPhoneNumber, normalizePhoneNumber } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -57,11 +59,17 @@ export async function POST(request: Request) {
         if (business) resolvedBusinessId = business.id;
       }
 
-      if (!resolvedBusinessId || !phone) {
-        return Response.json({ error: "businessId/slug e telefono obbligatori" }, { status: 400 });
+      const normalizedPhone = normalizePhoneNumber(String(phone || ""));
+      const errors = validateInput(
+        { phone: normalizedPhone },
+        [{ field: "phone", type: "phone", required: true }],
+      );
+
+      if (!resolvedBusinessId || errors.length > 0 || !isValidPhoneNumber(normalizedPhone)) {
+        return Response.json({ error: "Inserisci un numero WhatsApp valido" }, { status: 400 });
       }
 
-      const result = await requestCustomerOTP(resolvedBusinessId, phone);
+      const result = await requestCustomerOTP(resolvedBusinessId, normalizedPhone);
       return Response.json(result);
     }
 
@@ -80,7 +88,9 @@ export async function POST(request: Request) {
     }
 
     return Response.json({ error: "Azione non supportata" }, { status: 400 });
-  } catch {
-    return Response.json({ error: "Errore di autenticazione" }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Errore di autenticazione";
+    const status = message.startsWith("Troppi tentativi") ? 429 : 500;
+    return Response.json({ error: message }, { status });
   }
 }

@@ -7,6 +7,36 @@ export async function GET(request: Request) {
   const category = url.searchParams.get("category");
   const city = url.searchParams.get("city") || "Forlì";
   const query = url.searchParams.get("q");
+  const slug = url.searchParams.get("slug");
+
+  if (slug) {
+    const business = await prisma.business.findUnique({
+      where: { slug },
+      include: {
+        services: {
+          orderBy: { priceEuro: "asc" },
+          select: {
+            id: true,
+            name: true,
+            priceEuro: true,
+            durationMinutes: true,
+          },
+        },
+      },
+    });
+
+    if (!business) {
+      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+    }
+
+    return Response.json({
+      id: business.id,
+      name: business.name,
+      slug: business.slug,
+      category: business.category,
+      services: business.services,
+    });
+  }
 
   const where: Record<string, unknown> = {
     websitePublished: true,
