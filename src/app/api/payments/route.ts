@@ -1,12 +1,12 @@
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
 import { createDepositPayment, getPaymentStats } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const business = await getBusinessContext();
+  const business = await requireBusinessContext();
   if (!business) {
-    return Response.json({ error: "Attività non trovata" }, { status: 404 });
+    return Response.json({ error: "Autenticazione richiesta" }, { status: 401 });
   }
 
   const stats = await getPaymentStats(business.id);
@@ -15,20 +15,21 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return Response.json({ error: "Autenticazione richiesta" }, { status: 401 });
     }
 
     const payload = await request.json();
 
     if (payload.type === "deposit") {
+      if (!payload.bookingId) {
+        return Response.json({ error: "bookingId obbligatorio" }, { status: 400 });
+      }
+
       const clientSecret = await createDepositPayment({
         businessId: business.id,
         bookingId: payload.bookingId,
-        amountEuro: payload.amountEuro,
-        customerName: payload.customerName,
-        customerPhone: payload.customerPhone,
       });
       return Response.json({ clientSecret });
     }
