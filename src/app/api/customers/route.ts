@@ -1,15 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const business = await getBusinessContext();
+  const business = await requireBusinessContext();
 
   if (!business) {
-    const { customersStore } = await import("@/lib/data");
-    const customers = await customersStore.findAll();
-    return Response.json(customers);
+    return Response.json({ error: "Autenticazione richiesta" }, { status: 401 });
   }
 
   const customers = await prisma.customer.findMany({
@@ -22,20 +20,10 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
 
     if (!business) {
-      const { customersStore, createDemoId } = await import("@/lib/data");
-      const customer = {
-        id: payload.id ?? createDemoId("customer"),
-        name: payload.name ?? "Nuovo cliente",
-        phone: payload.phone ?? "+39 0543 000000",
-        lastVisit: payload.lastVisit ?? new Date().toISOString(),
-        totalVisits: payload.totalVisits ?? 1,
-        loyaltyPoints: payload.loyaltyPoints ?? 10,
-      };
-      const created = await customersStore.create(customer);
-      return Response.json(created, { status: 201 });
+      return Response.json({ error: "Autenticazione richiesta" }, { status: 401 });
     }
 
     const customer = await prisma.customer.create({
