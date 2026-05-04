@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -18,6 +19,8 @@ interface NavbarProps {
 
 export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const mobileMenuId = "mobile-navigation";
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-md">
@@ -28,19 +31,26 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
 
         {/* Desktop */}
         <div className="hidden items-center gap-6 md:flex">
-          {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {items.map((item) => {
+            const isActive = item.href !== "/" && pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "rounded-md text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2",
+                  isActive ? "text-slate-900" : "text-gray-600 hover:text-gray-900",
+                )}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
           {ctaLabel && ctaHref && (
             <Link
               href={ctaHref}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
             >
               {ctaLabel}
             </Link>
@@ -49,9 +59,12 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
 
         {/* Mobile toggle */}
         <button
-          className="md:hidden"
+          className="rounded-lg p-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-300 md:hidden"
           onClick={() => setOpen(!open)}
-          aria-label="Toggle menu"
+          aria-label={open ? "Chiudi menu" : "Apri menu"}
+          aria-expanded={open}
+          aria-controls={mobileMenuId}
+          type="button"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             {open ? (
@@ -64,22 +77,29 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
       </div>
 
       {/* Mobile menu */}
-      <div className={cn("border-t md:hidden", open ? "block" : "hidden")}>
+      <div id={mobileMenuId} className={cn("border-t md:hidden", open ? "block" : "hidden")}>
         <div className="space-y-1 px-4 py-3">
-          {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              onClick={() => setOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {items.map((item) => {
+            const isActive = item.href !== "/" && pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "block rounded-md px-3 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2",
+                  isActive ? "bg-amber-50 text-amber-700" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                )}
+                onClick={() => setOpen(false)}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
           {ctaLabel && ctaHref && (
             <Link
               href={ctaHref}
-              className="mt-2 block rounded-lg bg-blue-600 px-3 py-2 text-center text-base font-medium text-white hover:bg-blue-700"
+              className="mt-2 block rounded-lg bg-blue-600 px-3 py-2 text-center text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
               onClick={() => setOpen(false)}
             >
               {ctaLabel}
