@@ -28,8 +28,8 @@ export default async function DashboardPage() {
 
   const quickActions = [
     {
-      title: "Nuova prenotazione",
-      description: "Aggiungi un appuntamento in agenda e invia conferma automatica.",
+      title: "Apri agenda prenotazioni",
+      description: "Controlla appuntamenti, disponibilità e conferme della giornata.",
       href: "/dashboard/bookings",
       accent: "bg-amber-100 text-amber-900",
     },
@@ -40,8 +40,8 @@ export default async function DashboardPage() {
       accent: "bg-emerald-100 text-emerald-900",
     },
     {
-      title: "Vedi messaggi",
-      description: "Controlla richieste arrivate da Google, WhatsApp e modulo online.",
+      title: "Leggi recensioni",
+      description: "Rispondi ai feedback e scopri come stanno parlando della tua attività.",
       href: "/dashboard/reviews",
       accent: "bg-sky-100 text-sky-900",
     },

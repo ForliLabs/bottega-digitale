@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import Link from "next/link";
 import { getBusinessContext } from "@/lib/auth";
 import {
   WIZARD_STEPS,
@@ -37,9 +38,18 @@ export default async function OnboardingPage() {
         websitePublished: business.websitePublished,
         whatsappConnected: !!business.whatsappPhoneId,
         loyaltyEnabled: business.loyaltyEnabled,
-        hasCustomers: false, // Would need to check
+        hasCustomers: false,
       })
     : [];
+
+  const stepActions: Record<string, { href: string; label: string }> = {
+    profile: { href: "/dashboard/settings/api", label: "Configura accessi" },
+    services: { href: "/dashboard/products", label: "Aggiungi servizi o prodotti" },
+    hours: { href: "/dashboard/queue", label: "Imposta disponibilità" },
+    features: { href: "/dashboard/automations", label: "Attiva funzionalità" },
+    website: { href: "/dashboard/website", label: "Controlla il sito" },
+    whatsapp: { href: "/dashboard/whatsapp", label: "Collega WhatsApp" },
+  };
 
   return (
     <div className="space-y-8">
@@ -99,6 +109,8 @@ export default async function OnboardingPage() {
           const isCompleted = completedSteps.includes(step.id);
           const isCurrent = nextStep?.id === step.id;
 
+          const action = stepActions[step.id];
+
           return (
             <div
               key={step.id}
@@ -133,7 +145,17 @@ export default async function OnboardingPage() {
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">{step.description}</p>
               </div>
-              <div className="text-xs text-slate-400">~{step.estimatedMinutes} min</div>
+              <div className="flex items-center gap-3">
+                <div className="text-xs text-slate-400">~{step.estimatedMinutes} min</div>
+                {action ? (
+                  <Link
+                    href={action.href}
+                    className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                  >
+                    {isCompleted ? "Rivedi" : action.label}
+                  </Link>
+                ) : null}
+              </div>
             </div>
           );
         })}
