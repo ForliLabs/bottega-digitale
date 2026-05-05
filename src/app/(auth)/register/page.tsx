@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast-provider";
+import { isValidPhoneNumber } from "@/lib/utils";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { notify } = useToast();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -15,16 +18,48 @@ export default function RegisterPage() {
     address: "",
     phone: "",
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => ({ ...prev, [field]: "" }));
+  }
+
+  const canContinue = useMemo(
+    () => !!form.name.trim() && !!form.email.trim() && form.password.length >= 8,
+    [form.email, form.name, form.password],
+  );
+
+  function validateStep(currentStep: number) {
+    const nextErrors: Record<string, string> = {};
+
+    if (currentStep === 1) {
+      if (!form.name.trim()) nextErrors.name = "Inserisci il tuo nome.";
+      if (!form.email.includes("@")) nextErrors.email = "Inserisci un'email valida.";
+      if (form.password.length < 8) nextErrors.password = "Usa almeno 8 caratteri.";
+    }
+
+    if (currentStep === 2) {
+      if (!form.businessName.trim()) nextErrors.businessName = "Inserisci il nome attività.";
+      if (!form.businessCategory) nextErrors.businessCategory = "Seleziona una categoria.";
+      if (form.phone && !isValidPhoneNumber(form.phone)) nextErrors.phone = "Inserisci un numero valido.";
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!validateStep(1) || !validateStep(2)) {
+      setError("Controlla i campi evidenziati prima di continuare.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -41,6 +76,7 @@ export default function RegisterPage() {
         return;
       }
 
+      notify({ tone: "success", title: "Account creato", description: "Ora completiamo servizi, orari e pubblicazione." });
       router.push("/onboarding");
     } catch {
       setError("Errore di connessione.");
@@ -87,6 +123,7 @@ export default function RegisterPage() {
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                     placeholder="Mario Rossi"
                   />
+                  {fieldErrors.name ? <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p> : null}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
@@ -98,23 +135,28 @@ export default function RegisterPage() {
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                     placeholder="nome@attivita.it"
                   />
+                  {fieldErrors.email ? <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p> : null}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
                   <input
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
                     value={form.password}
                     onChange={(e) => update("password", e.target.value)}
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                    placeholder="Almeno 6 caratteri"
+                    placeholder="Almeno 8 caratteri"
                   />
+                  {fieldErrors.password ? <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p> : null}
                 </div>
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
-                  disabled={!form.email || !form.password || !form.name}
+                  onClick={() => {
+                    setError("");
+                    if (validateStep(1)) setStep(2);
+                  }}
+                  disabled={!canContinue}
                   className="w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
                 >
                   Continua →
@@ -134,6 +176,7 @@ export default function RegisterPage() {
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                     placeholder="Es. Barbiere da Marco"
                   />
+                  {fieldErrors.businessName ? <p className="mt-1 text-xs text-red-600">{fieldErrors.businessName}</p> : null}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Tipo di attività</label>
@@ -147,6 +190,7 @@ export default function RegisterPage() {
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+                  {fieldErrors.businessCategory ? <p className="mt-1 text-xs text-red-600">{fieldErrors.businessCategory}</p> : null}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Indirizzo</label>
@@ -166,7 +210,9 @@ export default function RegisterPage() {
                     onChange={(e) => update("phone", e.target.value)}
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                     placeholder="+39 0543 000000"
+                    inputMode="tel"
                   />
+                  {fieldErrors.phone ? <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p> : null}
                 </div>
 
                 {error && (
