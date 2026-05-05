@@ -1,14 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { InlineMessage } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
+
+function getSavedOnboardingProgress() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const saved = window.localStorage.getItem("onboarding-progress");
+    return saved ? JSON.parse(saved) as {
+      services?: Array<{ name: string; price: string; duration: string }>;
+      hours?: Record<string, string>;
+      siteReady?: boolean;
+    } : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { notify } = useToast();
+  const savedProgress = getSavedOnboardingProgress();
   const [step, setStep] = useState(1);
-  const [services, setServices] = useState([
-    { name: "", price: "", duration: "30" },
-  ]);
+  const [services, setServices] = useState(
+    savedProgress?.services?.length ? savedProgress.services : [{ name: "", price: "", duration: "30" }],
+  );
+  const [hours, setHours] = useState<Record<string, string>>(
+    savedProgress?.hours ?? {
+      "Lunedì": "09:00–18:00",
+      "Martedì": "09:00–18:00",
+      "Mercoledì": "09:00–18:00",
+      "Giovedì": "09:00–18:00",
+      "Venerdì": "09:00–18:00",
+      "Sabato": "09:00–13:00",
+      "Domenica": "Chiuso",
+    },
+  );
+  const [siteReady, setSiteReady] = useState(savedProgress?.siteReady ?? false);
+  const [error, setError] = useState("");
 
   function addService() {
     setServices([...services, { name: "", price: "", duration: "30" }]);
@@ -18,6 +52,37 @@ export default function OnboardingPage() {
     const updated = [...services];
     updated[index] = { ...updated[index], [field]: value };
     setServices(updated);
+  }
+
+  useEffect(() => {
+    window.localStorage.setItem("onboarding-progress", JSON.stringify({ services, hours, siteReady }));
+  }, [hours, services, siteReady]);
+
+  function validateCurrentStep(currentStep: number) {
+    setError("");
+
+    if (currentStep === 1) {
+      const validServices = services.filter((service) => service.name.trim() && Number(service.price) > 0);
+      if (validServices.length === 0) {
+        setError("Aggiungi almeno un servizio con nome e prezzo.");
+        return false;
+      }
+    }
+
+    if (currentStep === 2) {
+      const hasOpeningHours = Object.values(hours).some((value) => value.trim() && value.trim().toLowerCase() !== "chiuso");
+      if (!hasOpeningHours) {
+        setError("Imposta almeno un giorno di apertura.");
+        return false;
+      }
+    }
+
+    if (currentStep === 3 && !siteReady) {
+      setError("Conferma l'anteprima del sito prima di entrare in dashboard.");
+      return false;
+    }
+
+    return true;
   }
 
   const steps = [
@@ -51,6 +116,8 @@ export default function OnboardingPage() {
             <h1 className="mt-6 text-2xl font-bold text-slate-900">{steps[step - 1].title}</h1>
             <p className="mt-1 text-sm text-slate-600">{steps[step - 1].description}</p>
           </div>
+
+          {error ? <div className="mb-4"><InlineMessage tone="error" title={error} /></div> : null}
 
           {step === 1 && (
             <div className="space-y-4">
@@ -98,6 +165,8 @@ export default function OnboardingPage() {
                     <input
                       type="text"
                       placeholder="09:00–18:00 o Chiuso"
+                      value={hours[day] ?? ""}
+                      onChange={(e) => setHours((current) => ({ ...current, [day]: e.target.value }))}
                       className="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:border-amber-500 focus:outline-none"
                     />
                   </div>
@@ -112,8 +181,25 @@ export default function OnboardingPage() {
                 <span className="text-4xl">🎉</span>
                 <h2 className="mt-3 text-xl font-bold text-slate-900">La tua bottega è pronta!</h2>
                 <p className="mt-2 text-sm text-slate-600">
-                  Il tuo sito web è stato generato. Puoi personalizzarlo dal pannello di controllo.
+                  Controlla l&apos;anteprima finale, poi conferma per entrare in dashboard con i dati già salvati.
                 </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 p-5 text-sm text-slate-600">
+                <p className="font-semibold text-slate-900">Cosa verrà pubblicato</p>
+                <ul className="mt-3 space-y-2 text-left">
+                  <li>• {services.filter((service) => service.name.trim()).length} servizi pronti per la prenotazione</li>
+                  <li>• Orari compilati per {Object.values(hours).filter((value) => value.trim()).length} giorni</li>
+                  <li>• Pagina pubblica e dashboard modificabili in ogni momento</li>
+                </ul>
+                <label className="mt-4 flex items-start gap-3 rounded-xl border border-slate-200 p-3">
+                  <input
+                    type="checkbox"
+                    checked={siteReady}
+                    onChange={(e) => setSiteReady(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span>Confermo di aver controllato l&apos;anteprima e voglio continuare in dashboard.</span>
+                </label>
               </div>
             </div>
           )}
@@ -131,9 +217,13 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={() => {
+                if (!validateCurrentStep(step)) return;
                 if (step < 3) {
                   setStep(step + 1);
+                  notify({ tone: "success", title: "Passo salvato" });
                 } else {
+                  window.localStorage.removeItem("onboarding-progress");
+                  notify({ tone: "success", title: "Onboarding completato" });
                   router.push("/dashboard");
                 }
               }}
