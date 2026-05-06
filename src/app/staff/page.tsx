@@ -1,5 +1,6 @@
 // Staff "Today" View — Mobile-optimized booking list
 export const dynamic = "force-dynamic";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
 export default async function StaffTodayPage() {
@@ -147,14 +148,14 @@ export default async function StaffTodayPage() {
       <div className="space-y-2">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Azioni rapide</h3>
         <div className="grid grid-cols-2 gap-2">
-          <button className="rounded-xl border border-slate-200 bg-white p-3 text-center">
-            <span className="text-lg">🎟️</span>
-            <p className="mt-1 text-xs font-medium text-slate-700">Walk-in</p>
-          </button>
-          <button className="rounded-xl border border-slate-200 bg-white p-3 text-center">
-            <span className="text-lg">☕</span>
-            <p className="mt-1 text-xs font-medium text-slate-700">In pausa</p>
-          </button>
+          <Link href="/dashboard/queue" className="rounded-xl border border-slate-200 bg-white p-3 text-center">
+            <span className="text-lg" aria-hidden="true">🎟️</span>
+            <p className="mt-1 text-xs font-medium text-slate-700">Apri coda</p>
+          </Link>
+          <Link href="/staff/profile" className="rounded-xl border border-slate-200 bg-white p-3 text-center">
+            <span className="text-lg" aria-hidden="true">☕</span>
+            <p className="mt-1 text-xs font-medium text-slate-700">Gestisci stato</p>
+          </Link>
         </div>
       </div>
     </div>
