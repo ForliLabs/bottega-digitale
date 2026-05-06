@@ -1,12 +1,13 @@
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 import { getNotificationFeed, getUnreadCount, markAllAsRead, markAsRead } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const business = await getBusinessContext();
+  const business = await requireBusinessContext();
   if (!business) {
-    return Response.json({ error: "Attività non trovata" }, { status: 404 });
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
   }
 
   const [feed, unreadCount] = await Promise.all([
@@ -14,33 +15,38 @@ export async function GET() {
     getUnreadCount(business.id),
   ]);
 
-  return Response.json({ feed, unreadCount });
+  return apiJson({ feed, unreadCount });
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
     const payload = await request.json();
 
     if (payload.action === "mark_all_read") {
       await markAllAsRead(business.id);
-      return Response.json({ success: true });
+      return apiJson({ success: true });
     }
 
     if (payload.action === "mark_read" && payload.notificationId) {
-      await markAsRead(payload.notificationId);
-      return Response.json({ success: true });
+      const result = await markAsRead(payload.notificationId, business.id);
+      if (result.count === 0) {
+        return apiError("Notifica non trovata", 404, "notification_not_found");
+      }
+      return apiJson({ success: true });
     }
 
-    return Response.json({ error: "Azione non valida" }, { status: 400 });
+    return apiError("Azione non valida", 400, "invalid_action");
   } catch {
-    return Response.json(
-      { error: "Errore nella gestione delle notifiche." },
-      { status: 400 }
-    );
+    return apiError("Errore nella gestione delle notifiche.", 500, "notifications_failed");
   }
 }

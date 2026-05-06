@@ -1,33 +1,47 @@
 import { prisma } from "@/lib/prisma";
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
 // Register a push subscription
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
+    const business = await requireBusinessContext();
+    if (!business) {
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
+    }
+
     const payload = await request.json();
     const { endpoint, keys, userType, userId, customerId } = payload;
 
     if (!endpoint || !keys?.p256dh || !keys?.auth) {
-      return Response.json({ error: "Dati sottoscrizione incompleti" }, { status: 400 });
+      return apiError("Dati sottoscrizione incompleti", 400, "invalid_subscription");
     }
 
-    const business = await getBusinessContext();
-
-    // Upsert subscription
     const existing = await prisma.pushSubscription.findUnique({ where: { endpoint } });
     if (existing) {
+      if (existing.businessId && existing.businessId !== business.id) {
+        return apiError("Sottoscrizione già registrata da un'altra attività", 409, "subscription_conflict");
+      }
+
       await prisma.pushSubscription.update({
         where: { id: existing.id },
         data: {
           p256dh: keys.p256dh,
           auth: keys.auth,
-          businessId: business?.id || null,
+          businessId: business.id,
           userType: userType || "owner",
+          userId: userId || null,
+          customerId: customerId || null,
         },
       });
-      return Response.json({ message: "Sottoscrizione aggiornata" });
+      return apiJson({ message: "Sottoscrizione aggiornata" });
     }
 
     await prisma.pushSubscription.create({
@@ -35,30 +49,42 @@ export async function POST(request: Request) {
         endpoint,
         p256dh: keys.p256dh,
         auth: keys.auth,
-        businessId: business?.id || null,
+        businessId: business.id,
         userType: userType || "owner",
         userId: userId || null,
         customerId: customerId || null,
       },
     });
 
-    return Response.json({ message: "Sottoscrizione push registrata" }, { status: 201 });
+    return apiJson({ message: "Sottoscrizione push registrata" }, { status: 201 });
   } catch {
-    return Response.json({ error: "Errore nella registrazione push" }, { status: 500 });
+    return apiError("Errore nella registrazione push", 500, "push_registration_failed");
   }
 }
 
-// DELETE: Unsubscribe
 export async function DELETE(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const { endpoint } = await request.json();
-    if (!endpoint) {
-      return Response.json({ error: "Endpoint mancante" }, { status: 400 });
+    const business = await requireBusinessContext();
+    if (!business) {
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
-    await prisma.pushSubscription.deleteMany({ where: { endpoint } });
-    return Response.json({ message: "Sottoscrizione rimossa" });
+    const { endpoint } = await request.json();
+    if (!endpoint) {
+      return apiError("Endpoint mancante", 400, "missing_endpoint");
+    }
+
+    const deleted = await prisma.pushSubscription.deleteMany({ where: { endpoint, businessId: business.id } });
+    if (deleted.count === 0) {
+      return apiError("Sottoscrizione non trovata", 404, "subscription_not_found");
+    }
+    return apiJson({ message: "Sottoscrizione rimossa" });
   } catch {
-    return Response.json({ error: "Errore nella rimozione" }, { status: 500 });
+    return apiError("Errore nella rimozione", 500, "push_delete_failed");
   }
 }

@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 import { createOrder } from "@/lib/product-catalog";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const business = await getBusinessContext();
+  const business = await requireBusinessContext();
   if (!business) {
-    return Response.json({ error: "Attività non trovata" }, { status: 404 });
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
   }
 
   const orders = await prisma.order.findMany({
@@ -17,14 +18,19 @@ export async function GET() {
     take: 50,
   });
 
-  return Response.json(orders);
+  return apiJson(orders);
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
     const payload = await request.json();
@@ -37,11 +43,8 @@ export async function POST(request: Request) {
       notes: payload.notes,
     });
 
-    return Response.json(order, { status: 201 });
+    return apiJson(order, { status: 201 });
   } catch {
-    return Response.json(
-      { error: "Errore nella creazione dell'ordine." },
-      { status: 400 }
-    );
+    return apiError("Errore nella creazione dell'ordine.", 500, "order_create_failed");
   }
 }

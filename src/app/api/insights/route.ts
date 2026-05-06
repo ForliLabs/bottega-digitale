@@ -1,24 +1,30 @@
 import { prisma } from "@/lib/prisma";
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 import { generateInsights, saveInsights, getLatestInsights } from "@/lib/ai-advisor";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const business = await getBusinessContext();
+  const business = await requireBusinessContext();
   if (!business) {
-    return Response.json({ insights: [] });
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
   }
 
   const insights = await getLatestInsights(business.id);
-  return Response.json({ insights });
+  return apiJson({ insights });
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
     const payload = await request.json();
@@ -27,19 +33,22 @@ export async function POST(request: Request) {
     if (action === "generate") {
       const insights = await generateInsights(business.id);
       await saveInsights(business.id, insights);
-      return Response.json({ insights, message: `${insights.length} nuovi insight generati` });
+      return apiJson({ insights, message: `${insights.length} nuovi insight generati` });
     }
 
     if (action === "dismiss") {
-      await prisma.insight.update({
-        where: { id: payload.insightId },
+      const result = await prisma.insight.updateMany({
+        where: { id: payload.insightId, businessId: business.id },
         data: { dismissed: true },
       });
-      return Response.json({ success: true });
+      if (result.count === 0) {
+        return apiError("Insight non trovato", 404, "insight_not_found");
+      }
+      return apiJson({ success: true });
     }
 
-    return Response.json({ error: "Azione non supportata" }, { status: 400 });
+    return apiError("Azione non supportata", 400, "invalid_action");
   } catch {
-    return Response.json({ error: "Errore nella generazione degli insight" }, { status: 500 });
+    return apiError("Errore nella generazione degli insight", 500, "insights_failed");
   }
 }

@@ -1,12 +1,14 @@
+import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const business = await getBusinessContext();
+  const business = await requireBusinessContext();
   if (!business) {
-    return Response.json({ partnerships: [], promotions: [], vouchers: [] });
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
   }
 
   const [partnershipsA, partnershipsB, promotionsSent, promotionsReceived, vouchers] = await Promise.all([
@@ -38,7 +40,7 @@ export async function GET() {
     ...partnershipsB.map((p) => ({ ...p, partner: p.businessA, direction: "received" as const })),
   ];
 
-  return Response.json({
+  return apiJson({
     partnerships,
     promotions: [...promotionsSent, ...promotionsReceived],
     vouchers,
@@ -46,10 +48,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
     const payload = await request.json();
@@ -59,7 +66,7 @@ export async function POST(request: Request) {
       const partnerSlug = payload.partnerSlug;
       const partner = await prisma.business.findUnique({ where: { slug: partnerSlug } });
       if (!partner) {
-        return Response.json({ error: "Attività partner non trovata" }, { status: 404 });
+        return apiError("Attività partner non trovata", 404, "partner_not_found");
       }
 
       const existing = await prisma.partnership.findFirst({
@@ -72,7 +79,7 @@ export async function POST(request: Request) {
       });
 
       if (existing) {
-        return Response.json({ error: "Partnership già esistente" }, { status: 409 });
+        return apiError("Partnership già esistente", 409, "partnership_exists");
       }
 
       const partnership = await prisma.partnership.create({
@@ -84,23 +91,35 @@ export async function POST(request: Request) {
         },
       });
 
-      return Response.json(partnership, { status: 201 });
+      return apiJson(partnership, { status: 201 });
     }
 
     if (action === "respond") {
       const { partnershipId, accept } = payload;
-      await prisma.partnership.update({
-        where: { id: partnershipId },
+      const updated = await prisma.partnership.updateMany({
+        where: {
+          id: partnershipId,
+          OR: [{ businessAId: business.id }, { businessBId: business.id }],
+        },
         data: { status: accept ? "active" : "declined" },
       });
-      return Response.json({ message: accept ? "Partnership accettata" : "Partnership rifiutata" });
+      if (updated.count === 0) {
+        return apiError("Partnership non trovata", 404, "partnership_not_found");
+      }
+      return apiJson({ message: accept ? "Partnership accettata" : "Partnership rifiutata" });
     }
 
     if (action === "create-promo") {
       const { partnershipId, discountPercent, description } = payload;
-      const partnership = await prisma.partnership.findUnique({ where: { id: partnershipId } });
-      if (!partnership || partnership.status !== "active") {
-        return Response.json({ error: "Partnership non attiva" }, { status: 400 });
+      const partnership = await prisma.partnership.findFirst({
+        where: {
+          id: partnershipId,
+          status: "active",
+          OR: [{ businessAId: business.id }, { businessBId: business.id }],
+        },
+      });
+      if (!partnership) {
+        return apiError("Partnership non attiva", 400, "partnership_inactive");
       }
 
       const toBusinessId = partnership.businessAId === business.id
@@ -117,14 +136,21 @@ export async function POST(request: Request) {
         },
       });
 
-      return Response.json(promo, { status: 201 });
+      return apiJson(promo, { status: 201 });
     }
 
     if (action === "generate-voucher") {
       const { crossPromotionId, customerPhone } = payload;
-      const promo = await prisma.crossPromotion.findUnique({ where: { id: crossPromotionId } });
+      const promo = await prisma.crossPromotion.findFirst({
+        where: {
+          id: crossPromotionId,
+          partnership: {
+            OR: [{ businessAId: business.id }, { businessBId: business.id }],
+          },
+        },
+      });
       if (!promo) {
-        return Response.json({ error: "Promozione non trovata" }, { status: 404 });
+        return apiError("Promozione non trovata", 404, "promotion_not_found");
       }
 
       const code = generateVoucherCode();
@@ -140,12 +166,12 @@ export async function POST(request: Request) {
         },
       });
 
-      return Response.json(voucher, { status: 201 });
+      return apiJson(voucher, { status: 201 });
     }
 
-    return Response.json({ error: "Azione non supportata" }, { status: 400 });
+    return apiError("Azione non supportata", 400, "invalid_action");
   } catch {
-    return Response.json({ error: "Errore nella gestione partnership" }, { status: 500 });
+    return apiError("Errore nella gestione partnership", 500, "partnership_failed");
   }
 }
 
@@ -153,7 +179,7 @@ function generateVoucherCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "BD-";
   for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }

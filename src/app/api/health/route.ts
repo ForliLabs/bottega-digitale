@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   let dbLatencyMs = 0;
   try {
     const dbStart = Date.now();
-    await prisma.$queryRawUnsafe("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
     dbLatencyMs = Date.now() - dbStart;
     dbOk = true;
   } catch (err) {
