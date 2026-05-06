@@ -93,12 +93,28 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
             >
               💬 WhatsApp
             </a>
-            <Link
-              href="/dashboard/bookings"
-              className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              📅 Prenota online
-            </Link>
+            {business.onlineBookingEnabled ? (
+              <Link
+                href={`/book/${business.slug}`}
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                📅 Prenota online
+              </Link>
+            ) : business.catalogEnabled ? (
+              <Link
+                href={`/shop/${business.slug}`}
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                🛍️ Apri la vetrina
+              </Link>
+            ) : (
+              <Link
+                href="/contact"
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                ✉️ Richiedi informazioni
+              </Link>
+            )}
           </div>
         </div>
       </section>

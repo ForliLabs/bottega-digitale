@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { EmptyState, InlineMessage, Skeleton } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
+import { isValidPhoneNumber } from "@/lib/utils";
 
 interface CustomerData {
   id: string;
@@ -33,6 +36,7 @@ export default function CustomerPortalPage() {
   const params = useParams();
   const slug = params.slug as string;
 
+  const { notify } = useToast();
   const storageKey = `customer_token_${slug}`;
   const [view, setView] = useState<PortalView>(() => {
     if (typeof window === "undefined") return "login";
@@ -49,9 +53,13 @@ export default function CustomerPortalPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loyaltyCards, setLoyaltyCards] = useState<LoyaltyCard[]>([]);
   const [loading, setLoading] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sessionMessage, setSessionMessage] = useState("");
+  const [resendCountdown, setResendCountdown] = useState(0);
 
   const fetchDashboard = useCallback(async (t: string) => {
+    setDashboardLoading(true);
     try {
       const res = await fetch("/api/customer-auth", {
         headers: { "x-customer-token": t },
@@ -60,6 +68,7 @@ export default function CustomerPortalPage() {
         localStorage.removeItem(storageKey);
         setToken("");
         setView("login");
+        setSessionMessage("La tua sessione è scaduta. Richiedi un nuovo codice per rientrare.");
         return;
       }
       const data = await res.json();
@@ -68,6 +77,8 @@ export default function CustomerPortalPage() {
       setLoyaltyCards(data.loyaltyCards);
     } catch {
       setError("Errore di connessione");
+    } finally {
+      setDashboardLoading(false);
     }
   }, [storageKey]);
 
@@ -81,9 +92,21 @@ export default function CustomerPortalPage() {
     return () => window.clearTimeout(loadDashboard);
   }, [token, view, fetchDashboard]);
 
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const timeout = window.setTimeout(() => setResendCountdown((current) => current - 1), 1000);
+    return () => window.clearTimeout(timeout);
+  }, [resendCountdown]);
+
   const handleRequestOTP = async () => {
+    if (!isValidPhoneNumber(phone)) {
+      setError("Inserisci un numero WhatsApp valido.");
+      return;
+    }
+
     setLoading(true);
     setError("");
+    setSessionMessage("");
     try {
       const res = await fetch("/api/customer-auth", {
         method: "POST",
@@ -91,9 +114,14 @@ export default function CustomerPortalPage() {
         body: JSON.stringify({ action: "request-otp", slug, phone }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error); return; }
+      if (!res.ok) {
+        setError(data.error);
+        return;
+      }
       setSessionId(data.sessionId);
       setView("otp");
+      setResendCountdown(30);
+      notify({ tone: "success", title: "Codice inviato", description: "Controlla WhatsApp e inserisci il codice a 6 cifre." });
     } catch {
       setError("Errore di connessione");
     } finally {
@@ -111,10 +139,14 @@ export default function CustomerPortalPage() {
         body: JSON.stringify({ action: "verify-otp", sessionId, otpCode }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error); return; }
+      if (!res.ok) {
+        setError(data.error);
+        return;
+      }
       setToken(data.token);
       localStorage.setItem(storageKey, data.token);
       setView("dashboard");
+      notify({ tone: "success", title: "Accesso completato" });
     } catch {
       setError("Errore di connessione");
     } finally {
@@ -141,17 +173,17 @@ export default function CustomerPortalPage() {
         {view === "login" && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Accedi con il telefono</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Riceverai un codice di verifica via WhatsApp.
-            </p>
+            <p className="mt-1 text-sm text-slate-500">Riceverai un codice di verifica via WhatsApp.</p>
+            {sessionMessage ? <div className="mt-4"><InlineMessage tone="info" title={sessionMessage} /></div> : null}
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               placeholder="+39 333 1234567"
+              inputMode="tel"
             />
-            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            {error ? <div className="mt-3"><InlineMessage tone="error" title={error} /></div> : null}
             <button
               onClick={handleRequestOTP}
               disabled={loading || !phone}
@@ -166,18 +198,17 @@ export default function CustomerPortalPage() {
         {view === "otp" && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Inserisci il codice</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Abbiamo inviato un codice a 6 cifre al tuo WhatsApp.
-            </p>
+            <p className="mt-1 text-sm text-slate-500">Abbiamo inviato un codice a 6 cifre al tuo WhatsApp.</p>
             <input
               type="text"
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-3 text-center text-2xl tracking-[0.5em] focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              placeholder="______"
+              className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-3 text-center text-2xl tracking-[0.2em] focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              placeholder="123456"
+              inputMode="numeric"
               maxLength={6}
             />
-            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            {error ? <div className="mt-3"><InlineMessage tone="error" title={error} /></div> : null}
             <button
               onClick={handleVerifyOTP}
               disabled={loading || otpCode.length !== 6}
@@ -185,11 +216,35 @@ export default function CustomerPortalPage() {
             >
               {loading ? "Verifica..." : "Verifica codice"}
             </button>
+            <button
+              onClick={handleRequestOTP}
+              disabled={loading || resendCountdown > 0}
+              className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {resendCountdown > 0 ? `Invia di nuovo tra ${resendCountdown}s` : "Invia di nuovo il codice"}
+            </button>
             <button onClick={() => setView("login")} className="mt-2 w-full text-sm text-slate-500">
               ← Cambia numero
             </button>
           </div>
         )}
+
+        {view === "dashboard" && dashboardLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        ) : null}
+
+        {view === "dashboard" && !dashboardLoading && !customer ? (
+          <EmptyState
+            icon="🔐"
+            title="Sessione non disponibile"
+            description="Richiedi un nuovo codice per accedere di nuovo al tuo spazio personale."
+            action={<button onClick={() => setView("login")} className="inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Richiedi un nuovo codice</button>}
+          />
+        ) : null}
 
         {/* Customer dashboard */}
         {view === "dashboard" && customer && (

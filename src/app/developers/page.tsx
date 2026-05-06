@@ -14,6 +14,15 @@ export default function DevelopersPage() {
           <p className="mt-2 text-sm text-slate-400">Versione {info.version}</p>
         </header>
 
+        <section className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">Primo passo</p>
+          <h2 className="mt-2 text-2xl font-bold text-slate-900">Apri l&apos;explorer API</h2>
+          <p className="mt-2 text-sm text-slate-600">Filtra endpoint, scarica la specifica OpenAPI e verifica quali route sono pubbliche.</p>
+          <a href="/developers/api" className="mt-4 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+            Apri explorer API
+          </a>
+        </section>
+
         <section className="mt-16 space-y-8">
           <div className="rounded-2xl border border-slate-200 bg-white p-8">
             <h2 className="text-xl font-bold text-slate-900">Autenticazione</h2>

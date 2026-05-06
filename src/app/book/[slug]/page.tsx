@@ -1,7 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { EmptyState, InlineMessage, Skeleton } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
+import { isValidPhoneNumber } from "@/lib/utils";
 
 interface TimeSlot {
   start: string;
@@ -37,26 +41,56 @@ export default function BookingPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const { notify } = useToast();
   const [loading, setLoading] = useState(false);
+  const [serviceLoading, setServiceLoading] = useState(true);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [error, setError] = useState("");
+  const [serviceError, setServiceError] = useState("");
+  const [availabilityError, setAvailabilityError] = useState("");
   const [bookingResult, setBookingResult] = useState<{ id: string; service: string; startsAt: string } | null>(null);
 
   useEffect(() => {
-    fetch(`/api/directory?slug=${slug}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.services) setServices(data.services);
-      })
-      .catch(() => {});
+    const timeout = window.setTimeout(() => {
+      setServiceLoading(true);
+      setServiceError("");
+      fetch(`/api/directory?slug=${slug}`)
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "Impossibile caricare i servizi");
+          }
+          if (Array.isArray(data.services)) {
+            setServices(data.services);
+            return;
+          }
+          setServices([]);
+        })
+        .catch((loadError) => {
+          setServiceError(loadError instanceof Error ? loadError.message : "Impossibile caricare i servizi");
+        })
+        .finally(() => setServiceLoading(false));
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [slug]);
 
   const fetchAvailability = useCallback((duration: number) => {
+    setAvailabilityLoading(true);
+    setAvailabilityError("");
     fetch(`/api/availability?slug=${slug}&duration=${duration}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.availability) setAvailability(data.availability);
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Impossibile caricare la disponibilità");
+        }
+        setAvailability(data.availability || []);
       })
-      .catch(() => {});
+      .catch((loadError) => {
+        setAvailability([]);
+        setAvailabilityError(loadError instanceof Error ? loadError.message : "Impossibile caricare la disponibilità");
+      })
+      .finally(() => setAvailabilityLoading(false));
   }, [slug]);
 
   const handleServiceSelect = (service: Service) => {
@@ -76,7 +110,23 @@ export default function BookingPage() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedSlot || !customerName) return;
+    if (!selectedService) {
+      setError("Seleziona un servizio prima di continuare.");
+      return;
+    }
+    if (!selectedSlot) {
+      setError("Scegli un orario disponibile.");
+      return;
+    }
+    if (!customerName.trim()) {
+      setError("Inserisci il tuo nome.");
+      return;
+    }
+    if (customerPhone && !isValidPhoneNumber(customerPhone)) {
+      setError("Inserisci un numero di telefono valido oppure lascia il campo vuoto.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -86,10 +136,10 @@ export default function BookingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug,
-          serviceId: selectedService?.id,
-          serviceName: selectedService?.name,
+          serviceId: selectedService.id,
+          serviceName: selectedService.name,
           startsAt: selectedSlot.start,
-          customerName,
+          customerName: customerName.trim(),
           customerPhone: customerPhone || undefined,
           notes: notes || undefined,
         }),
@@ -103,6 +153,7 @@ export default function BookingPage() {
 
       setBookingResult(data.booking);
       setStep("confirmed");
+      notify({ tone: "success", title: "Prenotazione confermata", description: "Riceverai un promemoria prima dell'appuntamento." });
     } catch {
       setError("Errore di connessione. Riprova.");
     } finally {
@@ -142,24 +193,33 @@ export default function BookingPage() {
         {step === "service" && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-slate-900">Scegli il servizio</h2>
-            {services.length === 0 && (
-              <p className="text-sm text-slate-400">Caricamento servizi...</p>
-            )}
-            {services.map((service) => (
-              <button
-                key={service.id}
-                onClick={() => handleServiceSelect(service)}
-                className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-amber-300 hover:shadow-md"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900">{service.name}</p>
-                    <p className="text-sm text-slate-500">{service.durationMinutes} min</p>
+            {serviceLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : serviceError ? (
+              <InlineMessage tone="error" title="Servizi non disponibili" description={serviceError} />
+            ) : services.length === 0 ? (
+              <EmptyState icon="🪑" title="Nessun servizio prenotabile" description="Questa attività non ha ancora pubblicato servizi online. Prova più tardi o contatta direttamente il negozio." />
+            ) : (
+              services.map((service) => (
+                <button
+                  key={service.id}
+                  onClick={() => handleServiceSelect(service)}
+                  className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-900">{service.name}</p>
+                      <p className="text-sm text-slate-500">{service.durationMinutes} min</p>
+                    </div>
+                    <p className="text-lg font-bold text-amber-600">€{service.priceEuro.toFixed(2)}</p>
                   </div>
-                  <p className="text-lg font-bold text-amber-600">€{service.priceEuro.toFixed(2)}</p>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))
+            )}
           </div>
         )}
 
@@ -167,26 +227,35 @@ export default function BookingPage() {
         {step === "date" && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-slate-900">Scegli il giorno</h2>
-            <p className="text-sm text-slate-500">
-              Servizio: <strong>{selectedService?.name}</strong>
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {daysWithSlots.map((day) => (
-                <button
-                  key={day.date}
-                  onClick={() => handleDateSelect(day.date)}
-                  className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm transition hover:border-amber-300"
-                >
-                  <p className="text-sm font-medium text-slate-900">{day.dayName}</p>
-                  <p className="text-xs text-slate-500">
-                    {new Date(day.date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
-                  </p>
-                  <p className="mt-1 text-xs text-emerald-600">
-                    {day.slots.filter((s) => s.available).length} posti
-                  </p>
-                </button>
-              ))}
-            </div>
+            <p className="text-sm text-slate-500">Servizio: <strong>{selectedService?.name}</strong></p>
+            {availabilityLoading ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : availabilityError ? (
+              <InlineMessage tone="error" title="Disponibilità non caricata" description={availabilityError} />
+            ) : daysWithSlots.length === 0 ? (
+              <EmptyState icon="🗓️" title="Nessuna data disponibile" description="Non ci sono slot aperti nei prossimi giorni per questo servizio. Riprova più tardi o scegli un altro servizio." />
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {daysWithSlots.map((day) => (
+                  <button
+                    key={day.date}
+                    onClick={() => handleDateSelect(day.date)}
+                    className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm transition hover:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  >
+                    <p className="text-sm font-medium text-slate-900">{day.dayName}</p>
+                    <p className="text-xs text-slate-500">
+                      {new Date(day.date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-600">{day.slots.filter((s) => s.available).length} posti</p>
+                  </button>
+                ))}
+              </div>
+            )}
             <button onClick={() => setStep("service")} className="text-sm text-slate-500 hover:text-slate-700">
               ← Indietro
             </button>
@@ -206,15 +275,15 @@ export default function BookingPage() {
                 <button
                   key={slot.start}
                   onClick={() => handleSlotSelect(slot)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-sm font-medium text-slate-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-50"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-sm font-medium text-slate-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300"
                 >
                   {new Date(slot.start).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
                 </button>
               ))}
             </div>
-            {availableSlots.length === 0 && (
-              <p className="text-sm text-slate-400">Nessun orario disponibile per questa data.</p>
-            )}
+            {availableSlots.length === 0 ? (
+              <InlineMessage tone="info" title="Nessun orario disponibile" description="Scegli un altro giorno o torna più tardi: gli slot si aggiornano automaticamente." />
+            ) : null}
             <button onClick={() => setStep("date")} className="text-sm text-slate-500 hover:text-slate-700">
               ← Indietro
             </button>
@@ -258,6 +327,7 @@ export default function BookingPage() {
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 placeholder="+39 333 1234567"
+                inputMode="tel"
               />
             </div>
 
@@ -272,9 +342,7 @@ export default function BookingPage() {
               />
             </div>
 
-            {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
-            )}
+            {error ? <InlineMessage tone="error" title={error} /> : null}
 
             <button
               onClick={handleSubmit}
@@ -309,13 +377,29 @@ export default function BookingPage() {
                   hour: "2-digit", minute: "2-digit"
                 })}
               </p>
-              <p className="mt-2 text-xs text-emerald-600">
-                Codice: {bookingResult.id.slice(0, 8).toUpperCase()}
-              </p>
+              <p className="mt-2 text-xs text-emerald-600">Codice: {bookingResult.id.slice(0, 8).toUpperCase()}</p>
             </div>
-            <p className="text-sm text-slate-500">
-              Riceverai un promemoria via WhatsApp prima dell&apos;appuntamento.
-            </p>
+            <p className="text-sm text-slate-500">Riceverai un promemoria via WhatsApp prima dell&apos;appuntamento.</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("service");
+                  setSelectedDate("");
+                  setSelectedSlot(null);
+                  setCustomerName("");
+                  setCustomerPhone("");
+                  setNotes("");
+                  setBookingResult(null);
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Nuova prenotazione
+              </button>
+              <Link href={`/s/${slug}`} className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">
+                Torna alla vetrina
+              </Link>
+            </div>
           </div>
         )}
       </div>

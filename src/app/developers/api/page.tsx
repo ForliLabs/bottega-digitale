@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PageSkeleton, RetryCard } from "@/components/ui/feedback";
 
 interface OpenAPISpec {
   info?: { title?: string; version?: string; description?: string };
@@ -13,29 +14,53 @@ export default function ApiDocsPage() {
   const [spec, setSpec] = useState<OpenAPISpec | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string>("");
+
+  const loadSpec = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const response = await fetch("/api/openapi");
+      if (!response.ok) {
+        throw new Error("Impossibile scaricare la specifica OpenAPI");
+      }
+      const data = await response.json() as OpenAPISpec;
+      setSpec(data);
+    } catch (error) {
+      setSpec(null);
+      setLoadError(error instanceof Error ? error.message : "Errore sconosciuto");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch("/api/openapi")
-      .then((r) => r.json())
-      .then((data: OpenAPISpec) => {
-        setSpec(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    const timeout = window.setTimeout(() => {
+      void loadSpec();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [loadSpec]);
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-slate-500">Caricamento documentazione API...</p>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <PageSkeleton lines={6} />
       </div>
     );
   }
 
   if (!spec) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-red-500">Errore nel caricamento della specifica OpenAPI</p>
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="space-y-4">
+          <RetryCard title="Errore nel caricamento della specifica OpenAPI" description={loadError || "Riprova tra qualche secondo."} />
+          <div className="text-center">
+            <button onClick={() => void loadSpec()} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+              Riprova ora
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

@@ -85,6 +85,7 @@ function ProductCard({
 }) {
   const whatsappMessage = encodeURIComponent(`Ciao! Vorrei ordinare: ${product.name} (${formatPrice(product.priceEuro)})`);
   const whatsappUrl = `https://wa.me/${businessPhone.replace(/\s+/g, "")}?text=${whatsappMessage}`;
+  const isSoldOut = product.stock === 0;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-transform hover:-translate-y-0.5">
@@ -111,14 +112,25 @@ function ProductCard({
             </span>
           )}
         </div>
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-3 text-sm font-semibold text-white hover:bg-green-600"
-        >
-          💬 Ordina su WhatsApp
-        </a>
+        {isSoldOut ? (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-100 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-200"
+          >
+            💬 Chiedi disponibilità
+          </a>
+        ) : (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-3 text-sm font-semibold text-white hover:bg-green-600"
+          >
+            💬 Ordina su WhatsApp
+          </a>
+        )}
       </div>
     </div>
   );

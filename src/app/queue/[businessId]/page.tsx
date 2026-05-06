@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { InlineMessage, Skeleton } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
+import { isValidPhoneNumber } from "@/lib/utils";
 
 interface QueueStatus {
   businessName: string;
@@ -16,29 +19,56 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
   const [phone, setPhone] = useState("");
   const [entryId, setEntryId] = useState<string | null>(null);
   const [status, setStatus] = useState<QueueStatus | null>(null);
+  const { notify } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [businessLoading, setBusinessLoading] = useState(true);
+  const [pollStatus, setPollStatus] = useState("In attesa di aggiornamenti...");
 
   useEffect(() => {
-    fetch(`/api/queue?businessId=${businessId}`)
-      .then((r) => r.json())
-      .then((data) => setBusinessName(data.businessName || ""))
-      .catch(() => {});
+    const timeout = window.setTimeout(() => {
+      setBusinessLoading(true);
+      fetch(`/api/queue?businessId=${businessId}`)
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "Impossibile caricare la coda");
+          }
+          setBusinessName(data.businessName || "Coda digitale");
+        })
+        .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Impossibile caricare la coda"))
+        .finally(() => setBusinessLoading(false));
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [businessId]);
 
   useEffect(() => {
     if (!entryId) return;
     const interval = setInterval(async () => {
-      const res = await fetch(`/api/queue?businessId=${businessId}&entryId=${entryId}`);
-      const data = await res.json();
-      setStatus(data);
+      try {
+        const res = await fetch(`/api/queue?businessId=${businessId}&entryId=${entryId}`);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Aggiornamento coda non disponibile");
+        }
+        setStatus(data);
+        setPollStatus(data.entry?.status === "called" ? "È il tuo turno" : "Ultimo aggiornamento ricevuto");
+      } catch {
+        setPollStatus("Connessione persa, nuovo tentativo tra pochi secondi...");
+      }
     }, 5000);
     return () => clearInterval(interval);
   }, [businessId, entryId]);
 
   async function joinQueue(e: React.FormEvent) {
     e.preventDefault();
+    if (phone && !isValidPhoneNumber(phone)) {
+      setError("Inserisci un numero WhatsApp valido oppure lascia il campo vuoto.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
@@ -48,7 +78,10 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
         body: JSON.stringify({ businessId, customerName: name, customerPhone: phone || null }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error); return; }
+      if (!res.ok) {
+        setError(data.error);
+        return;
+      }
       setEntryId(data.id);
       setStatus({
         businessName,
@@ -57,8 +90,13 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
         totalWaiting: data.position,
         estimatedWaitMin: data.estimatedWaitMin,
       });
-    } catch { setError("Errore di connessione."); }
-    finally { setLoading(false); }
+      setPollStatus("Sei in coda: aggiorniamo automaticamente la posizione.");
+      notify({ tone: "success", title: "Ingresso in coda confermato", description: "Ti aggiorneremo automaticamente sul tuo turno." });
+    } catch {
+      setError("Errore di connessione.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -67,12 +105,17 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-center">
             <span className="text-4xl">🎟️</span>
-            <h1 className="mt-3 text-2xl font-bold text-slate-900">
-              {businessName || "Coda digitale"}
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Mettiti in fila senza aspettare in negozio
-            </p>
+            {businessLoading ? (
+              <div className="mt-3 space-y-2">
+                <Skeleton className="mx-auto h-8 w-48" />
+                <Skeleton className="mx-auto h-4 w-56" />
+              </div>
+            ) : (
+              <>
+                <h1 className="mt-3 text-2xl font-bold text-slate-900">{businessName || "Coda digitale"}</h1>
+                <p className="mt-1 text-sm text-slate-600">Mettiti in fila senza aspettare in negozio</p>
+              </>
+            )}
           </div>
 
           {!entryId ? (
@@ -96,15 +139,16 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
                   placeholder="+39 333 1234567"
+                  inputMode="tel"
                 />
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {error ? <InlineMessage tone="error" title={error} /> : null}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || businessLoading}
                 className="w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
               >
-                {loading ? "..." : "Mettiti in coda"}
+                {loading ? "Inserimento in coda..." : "Mettiti in coda"}
               </button>
             </form>
           ) : (
@@ -118,6 +162,7 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
               </div>
               <div className="text-center text-sm text-slate-500">
                 <p>Totale in coda: {status?.totalWaiting || 0} persone</p>
+                <p className="mt-2 text-xs text-slate-400">{pollStatus}</p>
                 {status?.entry?.status === "called" && (
                   <div className="mt-4 rounded-2xl bg-emerald-50 p-4">
                     <p className="text-lg font-bold text-emerald-700">🔔 È il tuo turno!</p>

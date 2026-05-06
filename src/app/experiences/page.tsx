@@ -26,10 +26,10 @@ export default async function ExperiencesPage() {
             Vai al marketplace
           </Link>
           <Link
-            href="/dashboard/moonshot"
+            href="/directory"
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
           >
-            Moonshot lab
+            Esplora le botteghe
           </Link>
         </div>
       </section>

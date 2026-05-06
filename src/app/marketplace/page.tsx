@@ -8,9 +8,15 @@ import {
   getActiveCampaigns,
 } from "@/lib/marketplace";
 
-export default async function MarketplacePage() {
+interface MarketplacePageProps {
+  searchParams: Promise<{ category?: string }>;
+}
+
+export default async function MarketplacePage({ searchParams }: MarketplacePageProps) {
+  const filters = await searchParams;
+  const selectedCategory = filters.category || "";
   const [listings, stats, campaigns] = await Promise.all([
-    searchMarketplace({ featured: true }),
+    searchMarketplace({ featured: true, ...(selectedCategory ? { category: selectedCategory } : {}) }),
     getMarketplaceStats(),
     Promise.resolve(getActiveCampaigns()),
   ]);
@@ -26,6 +32,11 @@ export default async function MarketplacePage() {
         <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
           Servizi, prodotti e buoni regalo dalle migliori attività artigiane e commerciali della città.
         </p>
+        {selectedCategory ? (
+          <p className="mt-4 inline-flex rounded-full bg-amber-100 px-4 py-2 text-sm font-medium text-amber-800">
+            Filtro attivo: {selectedCategory}
+          </p>
+        ) : null}
 
         {/* Stats */}
         <div className="mx-auto mt-8 flex max-w-lg justify-center gap-8">
@@ -81,9 +92,12 @@ export default async function MarketplacePage() {
               <p className="mt-4 text-3xl font-bold text-slate-900">€{amount}</p>
               <p className="mt-1 text-sm text-slate-500">Bottega Credits</p>
               <p className="mt-2 text-xs text-slate-400">Valido in tutte le attività</p>
-              <button className="mt-4 w-full rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-white hover:bg-amber-600">
-                Acquista
-              </button>
+              <a
+                href={`mailto:ciao@bottegadigitale.it?subject=${encodeURIComponent(`Acquisto Bottega Credit €${amount}`)}`}
+                className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-white hover:bg-amber-600"
+              >
+                Acquista via assistenza
+              </a>
             </div>
           ))}
         </div>
@@ -97,7 +111,7 @@ export default async function MarketplacePage() {
             <Link
               key={cat.slug}
               href={`/marketplace?category=${cat.slug}`}
-              className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50"
+              className={`rounded-2xl border bg-white p-4 text-center shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50 ${selectedCategory === cat.slug ? "border-amber-400 bg-amber-50" : "border-slate-200"}`}
             >
               <span className="text-2xl">{cat.icon}</span>
               <p className="mt-2 text-sm font-medium text-slate-900">{cat.name}</p>
@@ -153,6 +167,22 @@ export default async function MarketplacePage() {
                       €{listing.priceEuro.toFixed(2)}
                     </p>
                   )}
+                  {listing.business ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Link
+                        href={listing.type === "product" ? `/shop/${listing.business.slug}` : `/book/${listing.business.slug}`}
+                        className="inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                      >
+                        {listing.type === "product" ? "Apri vetrina" : "Prenota ora"}
+                      </Link>
+                      <Link
+                        href={`/s/${listing.business.slug}`}
+                        className="inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Vedi attività
+                      </Link>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}

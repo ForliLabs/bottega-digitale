@@ -2,9 +2,29 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
-export default async function DirectoryPage() {
+interface DirectoryPageProps {
+  searchParams: Promise<{ category?: string; q?: string }>;
+}
+
+export default async function DirectoryPage({ searchParams }: DirectoryPageProps) {
+  const filters = await searchParams;
+  const selectedCategory = filters.category || "";
+  const query = filters.q || "";
+
   const businesses = await prisma.business.findMany({
-    where: { websitePublished: true },
+    where: {
+      websitePublished: true,
+      ...(selectedCategory ? { category: selectedCategory } : {}),
+      ...(query
+        ? {
+            OR: [
+              { name: { contains: query } },
+              { description: { contains: query } },
+              { category: { contains: query } },
+            ],
+          }
+        : {}),
+    },
     select: {
       id: true,
       name: true,
@@ -45,18 +65,41 @@ export default async function DirectoryPage() {
         </p>
       </section>
 
-      {categories.length > 0 && (
-        <div className="mt-8 flex flex-wrap justify-center gap-2">
-          {categories.map((cat) => (
-            <span
-              key={cat}
-              className="rounded-full bg-amber-100 px-4 py-2 text-sm font-medium text-amber-800"
+      <section className="mx-auto mt-8 max-w-3xl rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <form className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <label className="sr-only" htmlFor="directory-search">Cerca attività</label>
+          <input
+            id="directory-search"
+            name="q"
+            defaultValue={query}
+            className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+            placeholder="Cerca per nome, categoria o descrizione"
+          />
+          <button className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">
+            Cerca
+          </button>
+          {selectedCategory ? <input type="hidden" name="category" value={selectedCategory} /> : null}
+        </form>
+        {categories.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={query ? `/directory?q=${encodeURIComponent(query)}` : "/directory"}
+              className={`rounded-full px-4 py-2 text-sm font-medium ${!selectedCategory ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}
             >
-              {cat}
-            </span>
-          ))}
-        </div>
-      )}
+              Tutte
+            </Link>
+            {categories.map((cat) => (
+              <Link
+                key={cat}
+                href={`/directory?category=${encodeURIComponent(cat)}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                className={`rounded-full px-4 py-2 text-sm font-medium ${selectedCategory === cat ? "bg-amber-500 text-white" : "bg-amber-100 text-amber-800"}`}
+              >
+                {cat}
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {businessesWithRatings.map((biz) => (
@@ -93,15 +136,19 @@ export default async function DirectoryPage() {
       {businesses.length === 0 && (
         <div className="mt-12 text-center">
           <span className="text-6xl">🏪</span>
-          <h2 className="mt-4 text-xl font-bold text-slate-900">Nessuna attività ancora</h2>
+          <h2 className="mt-4 text-xl font-bold text-slate-900">
+            {query || selectedCategory ? "Nessun risultato per i filtri scelti" : "Nessuna attività ancora"}
+          </h2>
           <p className="mt-2 text-slate-600">
-            Sii il primo a registrarti su Bottega Digitale!
+            {query || selectedCategory
+              ? "Prova a cambiare categoria o usare una ricerca più ampia."
+              : "Sii il primo a registrarti su Bottega Digitale!"}
           </p>
           <Link
-            href="/register"
+            href={query || selectedCategory ? "/directory" : "/register"}
             className="mt-6 inline-block rounded-xl bg-amber-600 px-8 py-3 text-sm font-semibold text-white hover:bg-amber-700"
           >
-            Registra la tua attività
+            {query || selectedCategory ? "Rimuovi filtri" : "Registra la tua attività"}
           </Link>
         </div>
       )}
