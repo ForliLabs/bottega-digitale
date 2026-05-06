@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { getBusinessContext } from "@/lib/auth";
 import { getMediaLibrary, getStorageUsage } from "@/lib/media";
+import { MediaManager } from "./media-manager";
 
 export default async function MediaPage() {
   const business = await getBusinessContext();
@@ -55,66 +56,7 @@ export default async function MediaPage() {
         </section>
       )}
 
-      {/* Upload Instructions */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h3 className="text-sm font-semibold text-slate-700">Carica immagini</h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Usa l&apos;API <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">POST /api/media</code> con 
-          form-data (campo &quot;file&quot;). Formati supportati: JPEG, PNG, WebP. Max 5MB.
-        </p>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {(["general", "products", "social", "logo"] as const).map((folder) => (
-            <div key={folder} className="rounded-lg border border-dashed border-violet-300 bg-violet-50/50 p-4 text-center">
-              <p className="text-lg">
-                {folder === "products" ? "🛍️" : folder === "social" ? "📱" : folder === "logo" ? "🏷️" : "📁"}
-              </p>
-              <p className="mt-1 text-xs font-medium capitalize text-violet-700">{folder}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Media Gallery */}
-      {!library || library.assets.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 text-center">
-          <p className="text-3xl">📷</p>
-          <h3 className="mt-4 text-lg font-semibold text-slate-900">Nessun media</h3>
-          <p className="mt-2 text-sm text-slate-500">
-            Carica la tua prima immagine per iniziare a costruire la libreria media.
-          </p>
-        </div>
-      ) : (
-        <section className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700">
-            {library.assets.length} file caricati
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {library.assets.map((asset) => (
-              <div key={asset.id} className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div className="aspect-square bg-slate-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={asset.thumbnailUrl || asset.url}
-                    alt={asset.alt || asset.filename}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div className="p-3">
-                  <p className="truncate text-xs font-medium text-slate-700">{asset.filename}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="text-[10px] text-slate-400">
-                      {Math.round(asset.sizeBytes / 1024)}KB
-                    </span>
-                    <span className="inline-flex rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] text-violet-600">
-                      {asset.folder}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <MediaManager initialAssets={library?.assets ?? []} initialUsage={usage ?? { usedMB: 0, quotaMB: 100, percentUsed: 0 }} />
     </div>
   );
 }
