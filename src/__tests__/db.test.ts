@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { InMemoryStore } from "@/lib/db";
 
-interface TestItem { id: string; name: string; value: number }
+interface TestItem extends Record<string, unknown> { id: string; name: string; value: number }
 
 describe("DB — InMemoryStore", () => {
   it("should create and retrieve items", async () => {

@@ -6,7 +6,7 @@ describe("Auth — Password Hashing", () => {
   it("should hash a password", async () => {
     const hash = await hashPassword("testPassword123");
     expect(hash).toBeTruthy();
-    expect(hash.length).toBe(64); // SHA-256 hex
+    expect(hash.startsWith("scrypt$")).toBe(true);
   });
 
   it("should produce different hashes for different passwords", async () => {
@@ -15,10 +15,10 @@ describe("Auth — Password Hashing", () => {
     expect(hash1).not.toBe(hash2);
   });
 
-  it("should produce the same hash for the same password", async () => {
+  it("should produce different hashes for the same password thanks to random salts", async () => {
     const hash1 = await hashPassword("samePassword");
     const hash2 = await hashPassword("samePassword");
-    expect(hash1).toBe(hash2);
+    expect(hash1).not.toBe(hash2);
   });
 
   it("should verify correct password", async () => {
