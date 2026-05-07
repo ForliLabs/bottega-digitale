@@ -1,12 +1,14 @@
+import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const business = await getBusinessContext();
+  const business = await requireBusinessContext();
   if (!business) {
-    return Response.json({ staff: [] });
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
   }
 
   const staff = await prisma.staffProfile.findMany({
@@ -21,37 +23,51 @@ export async function GET() {
     orderBy: { createdAt: "asc" },
   });
 
-  // Compute stats for each staff member
-  const staffWithStats = await Promise.all(
-    staff.map(async (member) => {
-      const [totalBookings, completedBookings, revenue] = await Promise.all([
-        prisma.booking.count({ where: { staffId: member.id } }),
-        prisma.booking.count({ where: { staffId: member.id, status: "Completata" } }),
-        prisma.booking.aggregate({
-          where: { staffId: member.id, status: "Completata" },
-          _sum: { priceEuro: true },
-        }),
-      ]);
+  const staffIds = staff.map((member) => member.id);
+  const [bookingCounts, completedCounts, revenueByStaff] = await Promise.all([
+    prisma.booking.groupBy({
+      by: ["staffId"],
+      where: { staffId: { in: staffIds } },
+      _count: { _all: true },
+    }),
+    prisma.booking.groupBy({
+      by: ["staffId"],
+      where: { staffId: { in: staffIds }, status: "Completata" },
+      _count: { _all: true },
+    }),
+    prisma.booking.groupBy({
+      by: ["staffId"],
+      where: { staffId: { in: staffIds }, status: "Completata" },
+      _sum: { priceEuro: true },
+    }),
+  ]);
 
-      return {
-        ...member,
-        stats: {
-          totalBookings,
-          completedBookings,
-          revenue: revenue._sum.priceEuro || 0,
-        },
-      };
-    })
-  );
+  const totalBookingsMap = new Map(bookingCounts.map((item) => [item.staffId, item._count._all]));
+  const completedBookingsMap = new Map(completedCounts.map((item) => [item.staffId, item._count._all]));
+  const revenueMap = new Map(revenueByStaff.map((item) => [item.staffId, item._sum.priceEuro || 0]));
 
-  return Response.json({ staff: staffWithStats });
+  const staffWithStats = staff.map((member) => ({
+    ...member,
+    stats: {
+      totalBookings: totalBookingsMap.get(member.id) || 0,
+      completedBookings: completedBookingsMap.get(member.id) || 0,
+      revenue: revenueMap.get(member.id) || 0,
+    },
+  }));
+
+  return apiJson({ staff: staffWithStats });
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
     const payload = await request.json();
@@ -70,17 +86,22 @@ export async function POST(request: Request) {
       },
     });
 
-    return Response.json(member, { status: 201 });
+    return apiJson(member, { status: 201 });
   } catch {
-    return Response.json({ error: "Errore nella creazione del collaboratore" }, { status: 400 });
+    return apiError("Errore nella creazione del collaboratore", 500, "staff_create_failed");
   }
 }
 
 export async function PATCH(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
     const payload = await request.json();
@@ -93,20 +114,28 @@ export async function PATCH(request: Request) {
       updates.serviceIds = JSON.stringify(updates.serviceIds);
     }
 
-    const member = await prisma.staffProfile.update({
-      where: { id },
+    const updated = await prisma.staffProfile.updateMany({
+      where: { id, businessId: business.id },
       data: updates,
     });
 
-    return Response.json(member);
+    if (updated.count === 0) {
+      return apiError("Collaboratore non trovato", 404, "staff_not_found");
+    }
+
+    const member = await prisma.staffProfile.findFirst({
+      where: { id, businessId: business.id },
+    });
+
+    return apiJson(member);
   } catch {
-    return Response.json({ error: "Errore nell'aggiornamento del collaboratore" }, { status: 400 });
+    return apiError("Errore nell'aggiornamento del collaboratore", 500, "staff_update_failed");
   }
 }
 
 function randomColor(): string {
   const colors = ["#3B82F6", "#EF4444", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#06B6D4"];
-  return colors[Math.floor(Math.random() * colors.length)];
+  return colors[randomInt(colors.length)];
 }
 
 function defaultWorkingHours() {

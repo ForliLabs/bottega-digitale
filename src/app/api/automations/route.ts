@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { getBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 import { seedDefaultFlows, FLOW_TEMPLATES } from "@/lib/event-bus";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const business = await getBusinessContext();
+  const business = await requireBusinessContext();
   if (!business) {
-    return Response.json({ flows: [], templates: FLOW_TEMPLATES });
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
   }
 
   // Seed defaults if none exist
@@ -22,14 +23,19 @@ export async function GET() {
     orderBy: { createdAt: "asc" },
   });
 
-  return Response.json({ flows, templates: FLOW_TEMPLATES });
+  return apiJson({ flows, templates: FLOW_TEMPLATES });
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
     const payload = await request.json();
@@ -44,17 +50,22 @@ export async function POST(request: Request) {
       },
     });
 
-    return Response.json(flow, { status: 201 });
+    return apiJson(flow, { status: 201 });
   } catch {
-    return Response.json({ error: "Errore nella creazione del flusso" }, { status: 400 });
+    return apiError("Errore nella creazione del flusso", 500, "automation_create_failed");
   }
 }
 
 export async function PATCH(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const business = await getBusinessContext();
+    const business = await requireBusinessContext();
     if (!business) {
-      return Response.json({ error: "Attività non trovata" }, { status: 404 });
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
     const payload = await request.json();
@@ -64,13 +75,18 @@ export async function PATCH(request: Request) {
       updates.actions = JSON.stringify(updates.actions);
     }
 
-    const flow = await prisma.automationFlow.update({
-      where: { id },
+    const updated = await prisma.automationFlow.updateMany({
+      where: { id, businessId: business.id },
       data: updates,
     });
 
-    return Response.json(flow);
+    if (updated.count === 0) {
+      return apiError("Flusso non trovato", 404, "automation_not_found");
+    }
+
+    const flow = await prisma.automationFlow.findFirst({ where: { id, businessId: business.id } });
+    return apiJson(flow);
   } catch {
-    return Response.json({ error: "Errore nell'aggiornamento del flusso" }, { status: 400 });
+    return apiError("Errore nell'aggiornamento del flusso", 500, "automation_update_failed");
   }
 }
