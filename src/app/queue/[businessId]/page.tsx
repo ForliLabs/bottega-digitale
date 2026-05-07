@@ -99,6 +99,33 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
     }
   }
 
+  async function leaveQueue() {
+    if (!entryId) return;
+
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/queue", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId, entryId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || "Impossibile lasciare la coda");
+      }
+
+      setEntryId(null);
+      setStatus(null);
+      setPollStatus("Hai lasciato la coda.");
+      notify({ tone: "success", title: "Hai lasciato la coda" });
+    } catch (leaveError) {
+      setError(leaveError instanceof Error ? leaveError.message : "Errore di connessione.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center bg-amber-50 px-4">
       <div className="w-full max-w-md">
@@ -124,6 +151,7 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
                 <label className="mb-1 block text-sm font-medium text-slate-700">Nome *</label>
                 <input
                   required
+                  minLength={2}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
@@ -170,6 +198,14 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
                   </div>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={leaveQueue}
+                disabled={loading}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {loading ? "Uscita in corso..." : "Lascia la coda"}
+              </button>
             </div>
           )}
         </div>

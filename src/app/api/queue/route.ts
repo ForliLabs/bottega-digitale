@@ -1,4 +1,28 @@
+import { getAuthContext, requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
+
+const ACTIVE_QUEUE_STATUSES = ["waiting", "called", "serving"] as const;
+const MANAGEABLE_QUEUE_STATUSES = ["called", "serving", "completed", "cancelled"] as const;
+
+async function rebalanceQueuePositions(businessId: string, avgServiceMinutes: number) {
+  const activeEntries = await prisma.queueEntry.findMany({
+    where: { businessId, status: { in: [...ACTIVE_QUEUE_STATUSES] } },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+  });
+
+  await Promise.all(
+    activeEntries.map((entry, index) =>
+      prisma.queueEntry.update({
+        where: { id: entry.id },
+        data: {
+          position: index + 1,
+          estimatedWaitMin: index * avgServiceMinutes,
+        },
+      })
+    )
+  );
+}
 
 // Public queue API: join queue + check status (no auth required for customers)
 
@@ -8,12 +32,12 @@ export async function GET(request: Request) {
   const entryId = url.searchParams.get("entryId");
 
   if (!businessId) {
-    return Response.json({ error: "businessId richiesto." }, { status: 400 });
+    return apiError("businessId richiesto.", 400, "business_id_required");
   }
 
   const business = await prisma.business.findUnique({ where: { id: businessId } });
   if (!business || !business.queueEnabled) {
-    return Response.json({ error: "Coda non attiva per questa attività." }, { status: 404 });
+    return apiError("Coda non attiva per questa attività.", 404, "queue_not_enabled");
   }
 
   const waitingEntries = await prisma.queueEntry.findMany({
@@ -23,7 +47,7 @@ export async function GET(request: Request) {
 
   if (entryId) {
     const entry = waitingEntries.find((e) => e.id === entryId);
-    return Response.json({
+    return apiJson({
       businessName: business.name,
       entry: entry || null,
       position: entry ? waitingEntries.findIndex((e) => e.id === entryId) + 1 : null,
@@ -34,7 +58,7 @@ export async function GET(request: Request) {
     });
   }
 
-  return Response.json({
+  return apiJson({
     businessName: business.name,
     totalWaiting: waitingEntries.length,
     estimatedWaitMin: waitingEntries.length * business.avgServiceMinutes,
@@ -53,12 +77,12 @@ export async function POST(request: Request) {
     const { businessId, customerName, customerPhone } = await request.json();
 
     if (!businessId || !customerName) {
-      return Response.json({ error: "businessId e nome sono obbligatori." }, { status: 400 });
+      return apiError("businessId e nome sono obbligatori.", 400, "missing_queue_fields");
     }
 
     const business = await prisma.business.findUnique({ where: { id: businessId } });
     if (!business || !business.queueEnabled) {
-      return Response.json({ error: "Coda non attiva." }, { status: 404 });
+      return apiError("Coda non attiva.", 404, "queue_not_enabled");
     }
 
     const lastEntry = await prisma.queueEntry.findFirst({
@@ -78,7 +102,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Auto-create CRM entry if phone provided
     if (customerPhone) {
       const existingCustomer = await prisma.customer.findFirst({
         where: { businessId, phone: customerPhone },
@@ -97,11 +120,86 @@ export async function POST(request: Request) {
       }
     }
 
-    return Response.json(
+    return apiJson(
       { id: entry.id, position, estimatedWaitMin: entry.estimatedWaitMin },
       { status: 201 }
     );
   } catch {
-    return Response.json({ error: "Errore aggiunta alla coda." }, { status: 500 });
+    return apiError("Errore aggiunta alla coda.", 500, "queue_join_failed");
+  }
+}
+
+export async function PATCH(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const business = await requireBusinessContext();
+  if (!business) {
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
+  }
+
+  const { entryId, status } = await request.json();
+  if (!entryId || !MANAGEABLE_QUEUE_STATUSES.includes(status)) {
+    return apiError("Aggiornamento coda non valido", 400, "invalid_queue_update");
+  }
+
+  const data: Record<string, Date | string | null> = { status };
+  if (status === "called") {
+    data.calledAt = new Date();
+  }
+  if (status === "completed" || status === "cancelled") {
+    data.completedAt = new Date();
+  }
+
+  const updated = await prisma.queueEntry.updateMany({
+    where: { id: entryId, businessId: business.id },
+    data,
+  });
+  if (updated.count === 0) {
+    return apiError("Voce coda non trovata", 404, "queue_entry_not_found");
+  }
+
+  await rebalanceQueuePositions(business.id, business.avgServiceMinutes);
+  return apiJson({ success: true });
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const payload = await request.json();
+    const auth = await getAuthContext();
+    const businessId = auth?.business.id || payload.businessId;
+    const entryId = payload.entryId;
+
+    if (!businessId || !entryId) {
+      return apiError("entryId e businessId richiesti.", 400, "missing_queue_identifier");
+    }
+
+    const business = auth?.business || await prisma.business.findUnique({ where: { id: businessId } });
+    if (!business || !business.queueEnabled) {
+      return apiError("Coda non attiva.", 404, "queue_not_enabled");
+    }
+
+    const updated = await prisma.queueEntry.updateMany({
+      where: {
+        id: entryId,
+        businessId,
+        status: { in: [...ACTIVE_QUEUE_STATUSES] },
+      },
+      data: {
+        status: "cancelled",
+        completedAt: new Date(),
+      },
+    });
+
+    if (updated.count === 0) {
+      return apiError("Voce coda non trovata", 404, "queue_entry_not_found");
+    }
+
+    await rebalanceQueuePositions(businessId, business.avgServiceMinutes);
+    return apiJson({ success: true });
+  } catch {
+    return apiError("Errore nella cancellazione della coda.", 500, "queue_delete_failed");
   }
 }
