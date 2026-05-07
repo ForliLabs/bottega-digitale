@@ -165,6 +165,10 @@ export async function POST(request: Request) {
       timestamp: new Date(),
     });
 
+    const whatsappReminderScheduled = Boolean(
+      normalizedPhone && (business.whatsappPhoneId || business.whatsappToken || process.env.WHATSAPP_TOKEN)
+    );
+
     return Response.json({
       booking: {
         id: booking.id,
@@ -174,6 +178,7 @@ export async function POST(request: Request) {
         status: booking.status,
       },
       message: "Prenotazione confermata! Ti aspettiamo.",
+      whatsappReminderScheduled,
     }, { status: 201 });
   } catch {
     return Response.json({ error: "Errore nella creazione della prenotazione" }, { status: 400 });

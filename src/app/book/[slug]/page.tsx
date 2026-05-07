@@ -49,6 +49,7 @@ export default function BookingPage() {
   const [serviceError, setServiceError] = useState("");
   const [availabilityError, setAvailabilityError] = useState("");
   const [bookingResult, setBookingResult] = useState<{ id: string; service: string; startsAt: string } | null>(null);
+  const [reminderMessage, setReminderMessage] = useState("Ti invieremo i dettagli della prenotazione in questa pagina.");
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -95,6 +96,9 @@ export default function BookingPage() {
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
+    setSelectedDate("");
+    setSelectedSlot(null);
+    setError("");
     fetchAvailability(service.durationMinutes);
     setStep("date");
   };
@@ -152,8 +156,22 @@ export default function BookingPage() {
       }
 
       setBookingResult(data.booking);
+      const hasReminder = Boolean(customerPhone && data.whatsappReminderScheduled);
+      setReminderMessage(
+        hasReminder
+          ? "Riceverai un promemoria via WhatsApp prima dell'appuntamento."
+          : customerPhone
+            ? "La prenotazione è confermata. Se il negozio attiverà WhatsApp riceverai lì i promemoria."
+            : "Prenotazione confermata. Aggiungi il telefono la prossima volta per ricevere un promemoria WhatsApp."
+      );
       setStep("confirmed");
-      notify({ tone: "success", title: "Prenotazione confermata", description: "Riceverai un promemoria prima dell'appuntamento." });
+      notify({
+        tone: "success",
+        title: "Prenotazione confermata",
+        description: hasReminder
+          ? "Ti invieremo un promemoria WhatsApp prima dell'appuntamento."
+          : "Controlla i dettagli della prenotazione qui sotto.",
+      });
     } catch {
       setError("Errore di connessione. Riprova.");
     } finally {
@@ -174,10 +192,10 @@ export default function BookingPage() {
         </div>
 
         {/* Progress indicator */}
-        <div className="mb-8 flex items-center justify-center gap-2">
+        <div className="mb-8 flex items-center justify-center gap-2" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step === "confirmed" ? 4 : ["service", "date", "time", "details"].indexOf(step) + 1}>
           {(["service", "date", "time", "details"] as const).map((s, i) => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+              <div aria-current={step === s ? "step" : undefined} className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
                 step === s ? "bg-amber-500 text-white" :
                 (["service", "date", "time", "details"].indexOf(step) > i || step === "confirmed")
                   ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
@@ -256,7 +274,11 @@ export default function BookingPage() {
                 ))}
               </div>
             )}
-            <button onClick={() => setStep("service")} className="text-sm text-slate-500 hover:text-slate-700">
+            <button onClick={() => {
+              setSelectedDate("");
+              setSelectedSlot(null);
+              setStep("service");
+            }} className="text-sm text-slate-500 hover:text-slate-700">
               ← Indietro
             </button>
           </div>
@@ -270,7 +292,7 @@ export default function BookingPage() {
               {slotsForDate?.dayName}{" "}
               {new Date(selectedDate + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {availableSlots.map((slot) => (
                 <button
                   key={slot.start}
@@ -284,7 +306,10 @@ export default function BookingPage() {
             {availableSlots.length === 0 ? (
               <InlineMessage tone="info" title="Nessun orario disponibile" description="Scegli un altro giorno o torna più tardi: gli slot si aggiornano automaticamente." />
             ) : null}
-            <button onClick={() => setStep("date")} className="text-sm text-slate-500 hover:text-slate-700">
+            <button onClick={() => {
+              setSelectedSlot(null);
+              setStep("date");
+            }} className="text-sm text-slate-500 hover:text-slate-700">
               ← Indietro
             </button>
           </div>
@@ -308,8 +333,9 @@ export default function BookingPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">Nome *</label>
+              <label htmlFor="customer-name" className="block text-sm font-medium text-slate-700">Nome *</label>
               <input
+                id="customer-name"
                 type="text"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
@@ -320,8 +346,9 @@ export default function BookingPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">Telefono</label>
+              <label htmlFor="customer-phone" className="block text-sm font-medium text-slate-700">Telefono</label>
               <input
+                id="customer-phone"
                 type="tel"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
@@ -332,8 +359,9 @@ export default function BookingPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">Note (opzionale)</label>
+              <label htmlFor="booking-notes" className="block text-sm font-medium text-slate-700">Note (opzionale)</label>
               <textarea
+                id="booking-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -342,7 +370,9 @@ export default function BookingPage() {
               />
             </div>
 
-            {error ? <InlineMessage tone="error" title={error} /> : null}
+            <div role="alert" aria-live="polite">
+              {error ? <InlineMessage tone="error" title={error} /> : null}
+            </div>
 
             <button
               onClick={handleSubmit}
@@ -352,7 +382,10 @@ export default function BookingPage() {
               {loading ? "Prenotazione in corso..." : "Conferma prenotazione"}
             </button>
 
-            <button onClick={() => setStep("time")} className="text-sm text-slate-500 hover:text-slate-700">
+            <button onClick={() => {
+              setError("");
+              setStep("time");
+            }} className="text-sm text-slate-500 hover:text-slate-700">
               ← Indietro
             </button>
           </div>
@@ -379,7 +412,7 @@ export default function BookingPage() {
               </p>
               <p className="mt-2 text-xs text-emerald-600">Codice: {bookingResult.id.slice(0, 8).toUpperCase()}</p>
             </div>
-            <p className="text-sm text-slate-500">Riceverai un promemoria via WhatsApp prima dell&apos;appuntamento.</p>
+            <p className="text-sm text-slate-500">{reminderMessage}</p>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
               <button
                 type="button"
@@ -391,6 +424,7 @@ export default function BookingPage() {
                   setCustomerPhone("");
                   setNotes("");
                   setBookingResult(null);
+                  setReminderMessage("Ti invieremo i dettagli della prenotazione in questa pagina.");
                 }}
                 className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
