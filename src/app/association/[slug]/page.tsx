@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { getAssociationStats } from "@/lib/association-portal";
+import { AssociationImportClient } from "./association-import-client";
 
 interface AssociationPageProps {
   params: Promise<{ slug: string }>;
@@ -143,18 +144,7 @@ export default async function AssociationDashboard({ params }: AssociationPagePr
           </div>
         </section>
 
-        {/* Bulk onboard section */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Importazione massiva</h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Carica un file CSV con le colonne: nome, email, telefono, categoria, partitaIva, indirizzo.
-            Le attività verranno create e associate automaticamente.
-          </p>
-          <div className="mt-4 rounded-xl bg-slate-50 p-4 text-xs font-mono text-slate-600">
-            nome,email,telefono,categoria,partitaIva,indirizzo<br />
-            Barbiere Marco,marco@email.it,+393331234567,Barbiere,12345678901,Via Roma 1 Forlì
-          </div>
-        </section>
+        <AssociationImportClient associationId={association.id} />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAssociationStats, bulkOnboardBusinesses, parseCSVBusinesses } from "@/lib/association-portal";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -11,24 +12,38 @@ export async function GET(request: Request) {
     const associations = await prisma.association.findMany({
       include: { _count: { select: { memberships: true } } },
     });
-    return Response.json(associations);
+    return apiJson(associations);
   }
 
   const stats = await getAssociationStats(associationId);
-  return Response.json(stats);
+  return apiJson(stats);
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
     const payload = await request.json();
 
     if (payload.action === "bulk_onboard") {
+      if (!payload.associationId) {
+        return apiError("Associazione richiesta per l'importazione", 400, "association_required");
+      }
       const rows = parseCSVBusinesses(payload.csvData || "");
+      if (rows.length === 0) {
+        return apiError("Il CSV non contiene righe valide da importare", 400, "empty_csv_import");
+      }
       const result = await bulkOnboardBusinesses(payload.associationId, rows);
-      return Response.json(result);
+      return apiJson(result);
     }
 
-    // Create new association
+    if (!payload.name) {
+      return apiError("Nome associazione obbligatorio", 400, "association_name_required");
+    }
+
     const association = await prisma.association.create({
       data: {
         name: payload.name,
@@ -42,11 +57,8 @@ export async function POST(request: Request) {
       },
     });
 
-    return Response.json(association, { status: 201 });
+    return apiJson(association, { status: 201 });
   } catch {
-    return Response.json(
-      { error: "Errore nella gestione dell'associazione." },
-      { status: 400 }
-    );
+    return apiError("Errore nella gestione dell'associazione.", 400, "association_request_failed");
   }
 }
