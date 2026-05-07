@@ -107,6 +107,20 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
               >
                 🛍️ Apri la vetrina
               </Link>
+            ) : business.phone ? (
+              <a
+                href={`tel:${business.phone}`}
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                ✉️ Contatta il negozio
+              </a>
+            ) : business.email ? (
+              <a
+                href={`mailto:${business.email}`}
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                ✉️ Scrivi al negozio
+              </a>
             ) : (
               <Link
                 href="/contact"
@@ -201,33 +215,6 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* JSON-LD Structured Data for SEO */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "LocalBusiness",
-            name: business.name,
-            description: business.description,
-            address: {
-              "@type": "PostalAddress",
-              streetAddress: business.address,
-              addressLocality: business.city,
-              addressCountry: "IT",
-            },
-            telephone: business.phone,
-            email: business.email,
-            aggregateRating: avgRating > 0
-              ? {
-                  "@type": "AggregateRating",
-                  ratingValue: avgRating.toFixed(1),
-                  reviewCount: business.reviews.length,
-                }
-              : undefined,
-          }),
-        }}
-      />
     </div>
   );
 }
