@@ -4,6 +4,8 @@ import { useState, useEffect, use } from "react";
 
 interface LoyaltyData {
   businessName: string;
+  businessSlug: string;
+  businessPhone: string;
   customerName: string;
   points: number;
   totalEarned: number;
@@ -11,6 +13,7 @@ interface LoyaltyData {
   threshold: number;
   rewardName: string;
   rewardAvailable: boolean;
+  recentRedemptions?: Array<{ id: string; reward: string; createdAt: string }>;
 }
 
 export default function LoyaltyPublicPage({
@@ -61,7 +64,23 @@ export default function LoyaltyPublicPage({
     );
   }
 
-  const progressPercent = Math.min((data.points / data.threshold) * 100, 100);
+  const loyaltyData = data;
+  const progressPercent = Math.min((loyaltyData.points / loyaltyData.threshold) * 100, 100);
+
+  async function shareCard() {
+    const shareUrl = window.location.href;
+    if (navigator.share) {
+      await navigator.share({
+        title: `${loyaltyData.businessName} — Carta fedeltà`,
+        text: `${loyaltyData.customerName} ha ${loyaltyData.points} punti sulla carta fedeltà di ${loyaltyData.businessName}`,
+        url: shareUrl,
+      });
+      return;
+    }
+
+    await navigator.clipboard.writeText(shareUrl);
+    alert("Link copiato negli appunti");
+  }
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center bg-amber-50 px-4">
@@ -69,7 +88,7 @@ export default function LoyaltyPublicPage({
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-center">
             <span className="text-4xl">🏷️</span>
-            <h1 className="mt-3 text-2xl font-bold text-slate-900">{data.businessName}</h1>
+            <h1 className="mt-3 text-2xl font-bold text-slate-900">{loyaltyData.businessName}</h1>
             <p className="mt-1 text-sm text-slate-600">Carta Fedeltà Digitale</p>
           </div>
 
@@ -94,6 +113,7 @@ export default function LoyaltyPublicPage({
                   🎁 Hai raggiunto il premio!
                 </p>
                 <p className="text-xs text-emerald-600">{data.rewardName}</p>
+                <p className="mt-2 text-xs text-emerald-700">Mostra questa schermata al bancone per riscattarlo.</p>
               </div>
             )}
           </div>
@@ -108,6 +128,41 @@ export default function LoyaltyPublicPage({
               <p className="text-xs text-slate-500">Punti guadagnati</p>
             </div>
           </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={shareCard}
+              className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Condividi carta
+            </button>
+            <a
+              href={`tel:${data.businessPhone}`}
+              className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Chiama il negozio
+            </a>
+            <a
+              href={`/s/${data.businessSlug}`}
+              className="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-slate-800 sm:col-span-2"
+            >
+              Torna alla vetrina
+            </a>
+          </div>
+
+          {data.recentRedemptions && data.recentRedemptions.length > 0 ? (
+            <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-left">
+              <p className="text-sm font-semibold text-slate-900">Ultimi riscatti</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                {data.recentRedemptions.map((item) => (
+                  <li key={item.id}>
+                    • {item.reward} · {new Date(item.createdAt).toLocaleDateString("it-IT")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
