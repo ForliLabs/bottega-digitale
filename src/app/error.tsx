@@ -2,7 +2,15 @@
 
 import { useEffect } from "react";
 
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError({
+  error,
+  reset,
+  unstable_retry,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+  unstable_retry: () => void;
+}) {
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -17,10 +25,17 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <button
           type="button"
-          onClick={() => reset()}
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          onClick={() => unstable_retry()}
+          className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
         >
           Riprova
+        </button>
+        <button
+          type="button"
+          onClick={() => reset()}
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Ripristina
         </button>
         <a href="mailto:ciao@bottegadigitale.it" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           Contatta il supporto
