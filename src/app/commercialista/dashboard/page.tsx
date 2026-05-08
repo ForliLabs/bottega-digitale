@@ -96,12 +96,13 @@ export default async function AccountantDashboard({
                   Ultime fatture e totali annuali del cliente selezionato.
                 </p>
               </div>
-              <Link
+              <a
                 href={`/api/accountant?businessId=${businessId}&export=csv`}
+                download
                 className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Esporta CSV
-              </Link>
+              </a>
             </div>
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               <div className="rounded-xl bg-slate-50 p-4">
@@ -174,7 +175,7 @@ export default async function AccountantDashboard({
             Per ogni cliente attivo, ricevi un mese gratuito del tuo piano.
           </p>
           <div className="mt-3 inline-flex rounded-lg bg-white px-4 py-2 font-mono text-sm font-bold text-emerald-700">
-            COM-XXXXXXXX
+            {accountant.referralCode}
           </div>
         </section>
       </div>
