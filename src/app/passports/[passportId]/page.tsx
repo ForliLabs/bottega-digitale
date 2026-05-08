@@ -54,7 +54,7 @@ export default async function PassportPage({ params }: Props) {
             Apri vetrina
           </Link>
           <Link
-            href="/experiences"
+            href="/directory"
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
           >
             Scopri altre esperienze
