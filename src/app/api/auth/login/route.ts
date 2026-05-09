@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession, setSessionCookie } from "@/lib/auth";
 import { checkRateLimit, validateInput } from "@/lib/security";
+import { withRateLimit } from "@/lib/rate-limiter";
 
-export async function POST(request: Request) {
+const loginHandler: typeof POST = async (request: Request) => {
   try {
     const { email, password } = await request.json();
 
@@ -50,4 +51,6 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "Errore durante il login." }, { status: 500 });
   }
-}
+};
+
+export const POST = withRateLimit("auth:login", loginHandler);

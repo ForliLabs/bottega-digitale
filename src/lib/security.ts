@@ -39,6 +39,7 @@ const RATE_LIMITS: Record<string, RateLimitConfig> = {
   otp: { maxAttempts: 5, windowMs: 10 * 60 * 1000 }, // 5 per 10 min
   api: { maxAttempts: 100, windowMs: 60 * 1000 }, // 100 per minute
   booking: { maxAttempts: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour
+  gift_card: { maxAttempts: 5, windowMs: 60 * 60 * 1000 }, // 5 per hour
 };
 
 export async function checkRateLimit(

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, createSession, setSessionCookie } from "@/lib/auth";
 import { checkRateLimit, validateInput } from "@/lib/security";
 import { seedDefaultFlows } from "@/lib/event-bus";
+import { withRateLimit } from "@/lib/rate-limiter";
 
 function slugify(text: string): string {
   return text
@@ -15,7 +16,7 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
-export async function POST(request: Request) {
+const registerHandler: typeof POST = async (request: Request) => {
   try {
     const { email, password, name, businessName, businessCategory, address, phone } =
       await request.json();
@@ -97,4 +98,6 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "Errore durante la registrazione." }, { status: 500 });
   }
-}
+};
+
+export const POST = withRateLimit("auth:register", registerHandler);
