@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { useMemo, useState, type ReactNode } from "react";
 
 interface SidebarItem {
@@ -39,9 +40,9 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300",
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-amber-300",
                     isActive
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-amber-50 text-amber-700"
                       : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
                   )}
                   aria-current={isActive ? "page" : undefined}
@@ -59,7 +60,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
         <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Dashboard</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Dashboard</p>
               <Link href="/dashboard" className="text-lg font-bold text-slate-900">
                 {brand}
               </Link>
@@ -69,7 +70,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
               onClick={() => setMobileMenuOpen((current) => !current)}
               aria-expanded={mobileMenuOpen}
               aria-controls="dashboard-mobile-menu"
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
             >
               {mobileMenuOpen ? "Chiudi" : "Menu"}
             </button>
@@ -84,7 +85,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
                   className={cn(
                     "inline-flex min-w-fit items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium",
                     isActive
-                      ? "border-blue-200 bg-blue-50 text-blue-700"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
                       : "border-slate-200 bg-white text-slate-600",
                   )}
                   aria-current={isActive ? "page" : undefined}
@@ -108,7 +109,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium",
                         isActive
-                          ? "bg-blue-50 text-blue-700"
+                          ? "bg-amber-50 text-amber-700"
                           : "bg-white text-slate-700 hover:bg-slate-100",
                       )}
                       aria-current={isActive ? "page" : undefined}
@@ -125,6 +126,7 @@ export function DashboardShell({ brand, items, children }: DashboardLayoutProps)
 
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-8 lg:pb-8">
+            <Breadcrumbs />
             {children}
           </div>
         </main>
