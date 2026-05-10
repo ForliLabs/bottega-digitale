@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { emitEvent } from "@/lib/event-bus";
 import { checkRateLimit, validateInput } from "@/lib/security";
 import { isValidPhoneNumber, normalizePhoneNumber } from "@/lib/utils";
+import { withRateLimit } from "@/lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
 
 // Public booking creation endpoint — no auth required
-export async function POST(request: Request) {
+const bookingHandler: typeof POST = async (request: Request) => {
   try {
     const payload = await request.json();
     const { businessId, slug, serviceId, serviceName, startsAt, customerName, customerPhone, notes } = payload;
@@ -77,78 +78,75 @@ export async function POST(request: Request) {
 
     const bookingEnd = new Date(bookingStart.getTime() + durationMinutes * 60 * 1000);
 
-    const activeBookings = await prisma.booking.findMany({
-      where: {
-        businessId: business.id,
-        status: { in: ["Confermata", "In attesa"] },
-        startsAt: {
-          gte: new Date(bookingStart.getTime() - 24 * 60 * 60 * 1000),
-          lte: new Date(bookingEnd.getTime() + 24 * 60 * 60 * 1000),
+    // Use a serializable transaction to prevent race conditions (double-booking)
+    const booking = await prisma.$transaction(async (tx) => {
+      const activeBookings = await tx.booking.findMany({
+        where: {
+          businessId: business.id,
+          status: { in: ["Confermata", "In attesa"] },
+          startsAt: {
+            gte: new Date(bookingStart.getTime() - 24 * 60 * 60 * 1000),
+            lte: new Date(bookingEnd.getTime() + 24 * 60 * 60 * 1000),
+          },
         },
-      },
-      select: { startsAt: true, durationMinutes: true },
-    });
-
-    const conflicts = activeBookings.some((booking) => {
-      const existingStart = new Date(booking.startsAt);
-      const existingEnd = new Date(existingStart.getTime() + booking.durationMinutes * 60 * 1000);
-      return bookingStart < existingEnd && bookingEnd > existingStart;
-    });
-
-    if (conflicts) {
-      return Response.json({ error: "Questo orario non è più disponibile. Scegli un altro slot." }, { status: 409 });
-    }
-
-    // Find or create customer
-    let customerId: string | null = null;
-    if (normalizedPhone) {
-      const existingCustomer = await prisma.customer.findFirst({
-        where: { businessId: business.id, phone: normalizedPhone },
+        select: { startsAt: true, durationMinutes: true },
       });
 
-      if (existingCustomer) {
-        customerId = existingCustomer.id;
-        await prisma.customer.update({
-          where: { id: existingCustomer.id },
-          data: { lastVisit: new Date(), totalVisits: { increment: 1 } },
-        });
-      } else {
-        const newCustomer = await prisma.customer.create({
-          data: {
-            businessId: business.id,
-            name: customerName,
-            phone: normalizedPhone,
-            lastVisit: new Date(),
-          },
-        });
-        customerId = newCustomer.id;
+      const conflicts = activeBookings.some((b) => {
+        const existingStart = new Date(b.startsAt);
+        const existingEnd = new Date(existingStart.getTime() + b.durationMinutes * 60 * 1000);
+        return bookingStart < existingEnd && bookingEnd > existingStart;
+      });
 
-        await emitEvent({
-          type: "customer.created",
-          businessId: business.id,
-          data: { customerId: newCustomer.id, customerName, customerPhone: normalizedPhone },
-          timestamp: new Date(),
-        });
+      if (conflicts) {
+        throw new Error("SLOT_CONFLICT");
       }
-    }
 
-    // Create booking
-    const booking = await prisma.booking.create({
-      data: {
-        businessId: business.id,
-        customerId,
-        serviceId: serviceId || null,
-        customerName,
-        customerPhone: normalizedPhone || null,
-        service: resolvedServiceName,
-        startsAt: bookingStart,
-        durationMinutes,
-        status: "Confermata",
-        channel: "Online",
-        priceEuro,
-        notes: notes || null,
-      },
+      // Find or create customer inside the transaction
+      let txCustomerId: string | null = null;
+      if (normalizedPhone) {
+        const existingCustomer = await tx.customer.findFirst({
+          where: { businessId: business.id, phone: normalizedPhone },
+        });
+
+        if (existingCustomer) {
+          txCustomerId = existingCustomer.id;
+          await tx.customer.update({
+            where: { id: existingCustomer.id },
+            data: { lastVisit: new Date(), totalVisits: { increment: 1 } },
+          });
+        } else {
+          const newCustomer = await tx.customer.create({
+            data: {
+              businessId: business.id,
+              name: customerName,
+              phone: normalizedPhone,
+              lastVisit: new Date(),
+            },
+          });
+          txCustomerId = newCustomer.id;
+        }
+      }
+
+      return tx.booking.create({
+        data: {
+          businessId: business.id,
+          customerId: txCustomerId,
+          serviceId: serviceId || null,
+          customerName,
+          customerPhone: normalizedPhone || null,
+          service: resolvedServiceName,
+          startsAt: bookingStart,
+          durationMinutes,
+          status: "Confermata",
+          channel: "Online",
+          priceEuro,
+          notes: notes || null,
+        },
+      });
     });
+
+    const customerId = booking.customerId;
 
     // Emit booking.created event for automation engine
     await emitEvent({
@@ -180,7 +178,12 @@ export async function POST(request: Request) {
       message: "Prenotazione confermata! Ti aspettiamo.",
       whatsappReminderScheduled,
     }, { status: 201 });
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === "SLOT_CONFLICT") {
+      return Response.json({ error: "Questo orario non è più disponibile. Scegli un altro slot." }, { status: 409 });
+    }
     return Response.json({ error: "Errore nella creazione della prenotazione" }, { status: 400 });
   }
-}
+};
+
+export const POST = withRateLimit("booking:public", bookingHandler);
