@@ -1,4 +1,4 @@
-import { getAuthContext, requireBusinessContext } from "@/lib/auth";
+import { requireBusinessContext } from "@/lib/auth";
 import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 
@@ -166,25 +166,31 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  try {
-    const payload = await request.json();
-    const auth = await getAuthContext();
-    const businessId = auth?.business.id || payload.businessId;
-    const entryId = payload.entryId;
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
 
-    if (!businessId || !entryId) {
-      return apiError("entryId e businessId richiesti.", 400, "missing_queue_identifier");
+  const business = await requireBusinessContext();
+  if (!business) {
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
+  }
+
+  try {
+    const { entryId } = await request.json();
+
+    if (!entryId) {
+      return apiError("entryId richiesto.", 400, "missing_queue_identifier");
     }
 
-    const business = auth?.business || await prisma.business.findUnique({ where: { id: businessId } });
-    if (!business || !business.queueEnabled) {
+    if (!business.queueEnabled) {
       return apiError("Coda non attiva.", 404, "queue_not_enabled");
     }
 
     const updated = await prisma.queueEntry.updateMany({
       where: {
         id: entryId,
-        businessId,
+        businessId: business.id,
         status: { in: [...ACTIVE_QUEUE_STATUSES] },
       },
       data: {
@@ -197,7 +203,7 @@ export async function DELETE(request: Request) {
       return apiError("Voce coda non trovata", 404, "queue_entry_not_found");
     }
 
-    await rebalanceQueuePositions(businessId, business.avgServiceMinutes);
+    await rebalanceQueuePositions(business.id, business.avgServiceMinutes);
     return apiJson({ success: true });
   } catch {
     return apiError("Errore nella cancellazione della coda.", 500, "queue_delete_failed");
