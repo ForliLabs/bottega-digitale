@@ -192,20 +192,31 @@ export default function BookingPage() {
         </div>
 
         {/* Progress indicator */}
-        <div className="mb-8 flex items-center justify-center gap-2" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step === "confirmed" ? 4 : ["service", "date", "time", "details"].indexOf(step) + 1}>
-          {(["service", "date", "time", "details"] as const).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div aria-current={step === s ? "step" : undefined} className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                step === s ? "bg-amber-500 text-white" :
-                (["service", "date", "time", "details"].indexOf(step) > i || step === "confirmed")
-                  ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
-              }`}>
-                {i + 1}
-              </div>
-              {i < 3 && <div className="h-0.5 w-6 bg-slate-200" />}
-            </div>
-          ))}
-        </div>
+        <nav aria-label="Passi della prenotazione" className="mb-8">
+          <ol className="flex items-center justify-center gap-2">
+            {(["service", "date", "time", "details"] as const).map((s, i) => {
+              const isCompleted = ["service", "date", "time", "details"].indexOf(step) > i || step === "confirmed";
+              const isCurrent = step === s;
+              return (
+                <li key={s} className="flex items-center gap-2">
+                  <div
+                    aria-current={isCurrent ? "step" : undefined}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                      isCurrent ? "bg-amber-500 text-white" :
+                      isCompleted ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
+                    }`}
+                  >
+                    <span className="sr-only">
+                      {`Passo ${i + 1}: ${s === "service" ? "Servizio" : s === "date" ? "Data" : s === "time" ? "Orario" : "Dati"}${isCurrent ? " (corrente)" : isCompleted ? " (completato)" : ""}`}
+                    </span>
+                    <span aria-hidden="true">{i + 1}</span>
+                  </div>
+                  {i < 3 && <div className="h-0.5 w-6 bg-slate-200" aria-hidden="true" />}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
 
         {/* Step: Service */}
         {step === "service" && (
