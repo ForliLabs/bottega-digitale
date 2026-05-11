@@ -7,6 +7,7 @@ import {
   GIFT_CARD_AMOUNTS,
   getActiveCampaigns,
 } from "@/lib/marketplace";
+import { GiftCardPurchasePanel } from "./gift-card-purchase-panel";
 
 interface MarketplacePageProps {
   searchParams: Promise<{ category?: string }>;
@@ -78,29 +79,14 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
       )}
 
       {/* Gift Cards */}
-      <section className="mb-12">
-        <h2 className="mb-6 text-xl font-bold text-slate-900">🎁 Buoni Regalo</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {GIFT_CARD_AMOUNTS.map((amount) => (
-            <div
-              key={amount}
-              className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-transform hover:-translate-y-1"
-            >
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
-                <span className="text-2xl">🎁</span>
-              </div>
-              <p className="mt-4 text-3xl font-bold text-slate-900">€{amount}</p>
-              <p className="mt-1 text-sm text-slate-500">Bottega Credits</p>
-              <p className="mt-2 text-xs text-slate-400">Valido in tutte le attività</p>
-              <a
-                href={`mailto:ciao@bottegadigitale.it?subject=${encodeURIComponent(`Acquisto Bottega Credit €${amount}`)}`}
-                className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-white hover:bg-amber-600"
-              >
-                Acquista via assistenza
-              </a>
-            </div>
-          ))}
+      <section className="mb-12 space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">🎁 Buoni Regalo</h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-500">
+            Acquista subito un Bottega Credit, personalizza il messaggio e condividi il codice digitale senza passare dall'assistenza.
+          </p>
         </div>
+        <GiftCardPurchasePanel amounts={GIFT_CARD_AMOUNTS} />
       </section>
 
       {/* Categories */}
