@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { bookingsStore, businessProfile } from "@/lib/data";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 const dayFormatter = new Intl.DateTimeFormat("it-IT", {
   weekday: "short",
@@ -56,9 +57,11 @@ export default async function BookingsPage() {
                 <p className="text-sm font-semibold text-slate-900">{dayFormatter.format(date)}</p>
                 <p className="text-xs text-slate-500">{items.length} slot occupati</p>
               </div>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                {items.length > 0 ? "Attivo" : "Libero"}
-              </span>
+              <StatusBadge
+                tone={items.length > 0 ? "warning" : "neutral"}
+                label={items.length > 0 ? "Attivo" : "Libero"}
+                srLabel={items.length > 0 ? "Stato giorno: attivo" : "Stato giorno: libero"}
+              />
             </div>
             <div className="mt-4 space-y-3">
               {items.length > 0 ? (
@@ -104,15 +107,10 @@ export default async function BookingsPage() {
                   </td>
                   <td className="px-6 py-4">{booking.channel}</td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        booking.status === "Confermata"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
-                    >
-                      {booking.status}
-                    </span>
+                    <StatusBadge
+                      tone={booking.status === "Confermata" ? "success" : "warning"}
+                      label={booking.status}
+                    />
                   </td>
                 </tr>
               ))}
