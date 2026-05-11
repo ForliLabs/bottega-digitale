@@ -1,17 +1,29 @@
 // Staff "Today" View — Mobile-optimized booking list
 export const dynamic = "force-dynamic";
 import Link from "next/link";
+import { EmptyState } from "@/components/ui/feedback";
+import { getAuthContext, requireBusinessContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function StaffTodayPage() {
-  // In production, get staff from session. For now, show demo view.
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Get first business's bookings for today (demo mode)
-  const business = await prisma.business.findFirst();
+  const auth = await getAuthContext();
+  const business = await requireBusinessContext();
+  if (!business) {
+    return (
+      <EmptyState
+        icon="📅"
+        title="Accedi per vedere il turno di oggi"
+        description="La vista staff mostra solo gli appuntamenti della tua bottega attiva."
+        action={<Link href="/login" className="inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Accedi</Link>}
+      />
+    );
+  }
+
   const bookings = business
     ? await prisma.booking.findMany({
         where: {
@@ -35,6 +47,9 @@ export default async function StaffTodayPage() {
           {today.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}
         </p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">I miei appuntamenti</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {auth?.user.name ? `${auth.user.name} · ` : ""}{business.name}
+        </p>
       </div>
 
       {/* Summary Cards */}
