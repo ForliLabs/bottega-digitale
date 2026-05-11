@@ -6,6 +6,7 @@ import {
   generateWebhookSecret,
   signWebhookPayload,
   generateOpenAPISpec,
+  validateWebhookUrl,
   WEBHOOK_EVENTS,
 } from "@/lib/webhook-api";
 
@@ -154,5 +155,73 @@ describe("Webhook API — OpenAPI Spec", () => {
     expect(paths["/api/bookings"]).toBeDefined();
     expect(paths["/api/customers"]).toBeDefined();
     expect(paths["/api/orders"]).toBeDefined();
+  });
+});
+
+describe("Webhook API — URL Validation (SSRF Prevention)", () => {
+  it("should accept valid HTTPS URLs", () => {
+    const result = validateWebhookUrl("https://example.com/webhook");
+    expect(result.valid).toBe(true);
+  });
+
+  it("should reject HTTP URLs", () => {
+    const result = validateWebhookUrl("http://example.com/webhook");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("HTTPS");
+  });
+
+  it("should reject localhost", () => {
+    const result = validateWebhookUrl("https://localhost/webhook");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject private IPs (10.x)", () => {
+    const result = validateWebhookUrl("https://10.0.0.1/webhook");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject private IPs (172.16.x)", () => {
+    const result = validateWebhookUrl("https://172.16.0.1/webhook");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject private IPs (192.168.x)", () => {
+    const result = validateWebhookUrl("https://192.168.1.1/webhook");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject loopback IPs (127.x)", () => {
+    const result = validateWebhookUrl("https://127.0.0.1/webhook");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject cloud metadata endpoint", () => {
+    const result = validateWebhookUrl("https://169.254.169.254/latest/meta-data");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject metadata.google.internal", () => {
+    const result = validateWebhookUrl("https://metadata.google.internal/computeMetadata");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject .internal domains", () => {
+    const result = validateWebhookUrl("https://some-service.internal/hook");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject .local domains", () => {
+    const result = validateWebhookUrl("https://myapp.local/hook");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject invalid URLs", () => {
+    const result = validateWebhookUrl("not-a-url");
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject 0.0.0.0", () => {
+    const result = validateWebhookUrl("https://0.0.0.0/webhook");
+    expect(result.valid).toBe(false);
   });
 });

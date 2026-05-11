@@ -7,6 +7,14 @@ import {
   errorTracker,
   getSystemHealth,
   withObservability,
+  registerErrorReporter,
+  getErrorReporter,
+  captureException,
+  captureMessage,
+  setErrorReportingUser,
+  addBreadcrumb,
+  onAlert,
+  checkAlertThresholds,
 } from "@/lib/observability";
 
 describe("Observability — Logger", () => {
@@ -161,5 +169,109 @@ describe("Observability — Route Wrapper", () => {
     const body = await response.json();
     expect(body.error).toBeTruthy();
     expect(body.requestId).toMatch(/^req_/);
+  });
+});
+
+describe("Observability — External Error Reporter", () => {
+  it("should register and retrieve an error reporter", () => {
+    const mockReporter = {
+      captureException: vi.fn(),
+      captureMessage: vi.fn(),
+      setUser: vi.fn(),
+      addBreadcrumb: vi.fn(),
+    };
+
+    registerErrorReporter(mockReporter);
+    expect(getErrorReporter()).toBe(mockReporter);
+  });
+
+  it("should forward exceptions to registered reporter", () => {
+    const mockReporter = {
+      captureException: vi.fn(),
+      captureMessage: vi.fn(),
+      setUser: vi.fn(),
+      addBreadcrumb: vi.fn(),
+    };
+    registerErrorReporter(mockReporter);
+
+    const error = new Error("Test capture");
+    captureException(error, { route: "/api/test", businessId: "biz-1" });
+
+    expect(mockReporter.captureException).toHaveBeenCalledWith(
+      error,
+      expect.objectContaining({ route: "/api/test", businessId: "biz-1" }),
+    );
+  });
+
+  it("should forward messages to registered reporter", () => {
+    const mockReporter = {
+      captureException: vi.fn(),
+      captureMessage: vi.fn(),
+      setUser: vi.fn(),
+      addBreadcrumb: vi.fn(),
+    };
+    registerErrorReporter(mockReporter);
+
+    captureMessage("Something happened", "warn");
+    expect(mockReporter.captureMessage).toHaveBeenCalledWith("Something happened", "warn");
+  });
+
+  it("should set user context on reporter", () => {
+    const mockReporter = {
+      captureException: vi.fn(),
+      captureMessage: vi.fn(),
+      setUser: vi.fn(),
+      addBreadcrumb: vi.fn(),
+    };
+    registerErrorReporter(mockReporter);
+
+    setErrorReportingUser({ id: "u1", email: "test@test.com", businessId: "b1" });
+    expect(mockReporter.setUser).toHaveBeenCalledWith({
+      id: "u1",
+      email: "test@test.com",
+      businessId: "b1",
+    });
+  });
+
+  it("should add breadcrumbs to reporter", () => {
+    const mockReporter = {
+      captureException: vi.fn(),
+      captureMessage: vi.fn(),
+      setUser: vi.fn(),
+      addBreadcrumb: vi.fn(),
+    };
+    registerErrorReporter(mockReporter);
+
+    addBreadcrumb("navigation", "User clicked dashboard");
+    expect(mockReporter.addBreadcrumb).toHaveBeenCalledWith({
+      category: "navigation",
+      message: "User clicked dashboard",
+      level: "info",
+    });
+  });
+});
+
+describe("Observability — Alert Thresholds", () => {
+  it("should check thresholds and return results", () => {
+    const result = checkAlertThresholds({ maxErrorRate: 1000, maxP95Ms: 10000 });
+    expect(result.checked).toBe(true);
+    expect(Array.isArray(result.alerts)).toBe(true);
+  });
+
+  it("should fire alert handler when error rate exceeds threshold", () => {
+    const handler = vi.fn();
+    onAlert(handler);
+
+    // Inject many errors to trigger alert
+    for (let i = 0; i < 20; i++) {
+      errorTracker.track({
+        message: `Alert test error ${i}`,
+        timestamp: new Date(),
+      });
+    }
+
+    const result = checkAlertThresholds({ maxErrorRate: 5 });
+    expect(result.alerts.length).toBeGreaterThan(0);
+    expect(handler).toHaveBeenCalled();
   });
 });
