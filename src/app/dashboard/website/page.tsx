@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { getBusinessContext } from "@/lib/auth";
+import { BUSINESS_TEMPLATES } from "@/lib/business-templates";
 import { businessProfile, sampleReviews } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { WebsiteEditorClient } from "./website-editor-client";
@@ -32,6 +33,16 @@ export default async function WebsitePage() {
         price: "priceEuro" in service ? `€${service.priceEuro.toFixed(2)}` : service.price,
       }))}
       sampleReview={sampleReviews[0]?.comment || "Recensione in arrivo"}
+      businessCategory={business?.category || ""}
+      businessTemplates={BUSINESS_TEMPLATES.map((template) => ({
+        id: template.id,
+        label: template.label,
+        icon: template.icon,
+        description: template.description,
+        websiteTemplate: template.websiteTemplate,
+        serviceCount: template.services.length,
+        productCount: template.products.length,
+      }))}
     />
   );
 }

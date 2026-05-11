@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { InlineMessage } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -11,10 +11,22 @@ interface ServicePreview {
   price: string;
 }
 
+interface BusinessTemplatePreview {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  websiteTemplate: string;
+  serviceCount: number;
+  productCount: number;
+}
+
 export function WebsiteEditorClient({
   initialState,
   services,
   sampleReview,
+  businessCategory,
+  businessTemplates,
 }: {
   initialState: {
     name: string;
@@ -28,11 +40,20 @@ export function WebsiteEditorClient({
   };
   services: ServicePreview[];
   sampleReview: string;
+  businessCategory: string;
+  businessTemplates: BusinessTemplatePreview[];
 }) {
   const { notify } = useToast();
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
+  const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  const recommendedTemplates = useMemo(() => {
+    const category = businessCategory.toLowerCase();
+    const matching = businessTemplates.filter((template) => category && template.id.includes(category.slice(0, 5)));
+    return matching.length > 0 ? matching : businessTemplates.slice(0, 4);
+  }, [businessCategory, businessTemplates]);
 
   async function saveChanges(publishOverride?: boolean) {
     setLoading(true);
@@ -57,6 +78,33 @@ export function WebsiteEditorClient({
       setError(saveError instanceof Error ? saveError.message : "Impossibile salvare il sito");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function applyBusinessTemplate(template: BusinessTemplatePreview) {
+    setApplyingTemplate(template.id);
+    setError("");
+    try {
+      const response = await fetch("/api/business-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Impossibile applicare il template");
+      }
+      setForm((current) => ({ ...current, websiteTemplate: template.websiteTemplate }));
+      notify({
+        tone: "success",
+        title: `${template.label} applicato`,
+        description: "Servizi, catalogo e impostazioni base sono stati aggiornati.",
+      });
+      window.location.reload();
+    } catch (applyError) {
+      setError(applyError instanceof Error ? applyError.message : "Impossibile applicare il template");
+    } finally {
+      setApplyingTemplate(null);
     }
   }
 
@@ -128,6 +176,32 @@ export function WebsiteEditorClient({
               className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
             />
           </label>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-slate-600">
+            <p className="font-medium text-slate-900">Template business pronti</p>
+            <p className="mt-1 text-sm text-slate-600">Avvia più velocemente servizi, catalogo e sito con un setup pensato per la tua categoria.</p>
+            <div className="mt-4 space-y-3">
+              {recommendedTemplates.map((template) => (
+                <div key={template.id} className="rounded-2xl border border-emerald-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{template.icon} {template.label}</p>
+                      <p className="mt-1 text-xs text-slate-500">{template.description}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void applyBusinessTemplate(template)}
+                      disabled={applyingTemplate === template.id}
+                      className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {applyingTemplate === template.id ? "Applicazione..." : "Applica"}
+                    </button>
+                  </div>
+                  <p className="mt-3 text-xs text-emerald-800">{template.serviceCount} servizi · {template.productCount} prodotti · tema {template.websiteTemplate}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
             <p className="font-medium text-slate-900">Azioni rapide</p>
