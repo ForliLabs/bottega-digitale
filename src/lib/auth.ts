@@ -17,7 +17,7 @@
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import type { Business, User } from "@/generated/prisma/client";
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual, createHash } from "node:crypto";
 
 function scrypt(
   password: string,
@@ -88,17 +88,24 @@ export function generateToken(): string {
   return randomBytes(32).toString("hex");
 }
 
+/** Hash a session token with SHA-256 for safe storage. */
+export function hashSessionToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 /**
  * Create a new session for a user with 30-day expiry.
+ * Stores a SHA-256 hash of the token — the raw token is only returned to the caller.
  * @param userId - The user ID to create a session for.
- * @returns The session token.
+ * @returns The raw session token (to be set as cookie).
  */
 export async function createSession(userId: string): Promise<string> {
   const token = generateToken();
+  const tokenHash = hashSessionToken(token);
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
   await prisma.session.create({
-    data: { token, userId, expiresAt },
+    data: { token: tokenHash, userId, expiresAt },
   });
 
   return token;
@@ -142,8 +149,10 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   const token = await getSessionToken();
   if (!token) return null;
 
+  const tokenHash = hashSessionToken(token);
+
   const session = await prisma.session.findUnique({
-    where: { token },
+    where: { token: tokenHash },
     include: { user: true },
   });
 
@@ -166,14 +175,38 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
 /**
  * Get the current business context, falling back to the first seeded business in demo mode.
- * Useful for routes that should work without authentication during development.
+ * In production the fallback is disabled — callers must be authenticated.
  */
 export async function getBusinessContext(): Promise<Business | null> {
   const auth = await getAuthContext();
   if (auth) return auth.business;
 
-  // Fallback to first business (demo mode)
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  // Fallback to first business (demo/dev mode only)
   return prisma.business.findFirst();
+}
+
+/**
+ * Higher-order helper that resolves the authenticated business and passes its
+ * `businessId` to the provided callback. Returns `null` when no business is
+ * available (unauthenticated in production).
+ *
+ * @example
+ * ```ts
+ * const products = await withTenantGuard(async (businessId) =>
+ *   prisma.product.findMany({ where: { businessId } })
+ * );
+ * ```
+ */
+export async function withTenantGuard<T>(
+  fn: (businessId: string) => Promise<T>,
+): Promise<T | null> {
+  const business = await getBusinessContext();
+  if (!business) return null;
+  return fn(business.id);
 }
 
 /**
