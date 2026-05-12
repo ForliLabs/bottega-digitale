@@ -1026,3 +1026,56 @@ model NotificationLog {
   @@index([businessId, customerId])
   @@index([eventType, status])
 }
+
+// ─── Iter6 Feature 3: NPS / Customer Satisfaction Surveys ───────
+
+model NpsSurvey {
+  id          String        @id @default(cuid())
+  businessId  String
+  title       String
+  trigger     String        @default("post_booking") // post_booking | post_purchase | manual
+  active      Boolean       @default(true)
+  responses   NpsResponse[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([businessId, active])
+}
+
+model NpsResponse {
+  id            String    @id @default(cuid())
+  surveyId      String
+  businessId    String
+  customerId    String?
+  customerName  String?
+  score         Int       // 0-10 NPS score
+  comment       String?
+  channel       String    @default("web") // web | whatsapp | email
+  survey        NpsSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([surveyId])
+}
+
+// ─── Iter6 Feature 5: Campaign Builder ──────────────────────────
+
+model Campaign {
+  id              String   @id @default(cuid())
+  businessId      String
+  name            String
+  channel         String   @default("whatsapp") // whatsapp | email | push
+  status          String   @default("draft") // draft | scheduled | sending | sent | cancelled
+  segmentRules    String   @default("{}") // JSON audience segmentation rules
+  messageTemplate String   @default("")
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  totalRecipients Int      @default(0)
+  delivered       Int      @default(0)
+  opened          Int      @default(0)
+  clicked         Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([businessId, status])
+}
