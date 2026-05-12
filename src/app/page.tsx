@@ -113,7 +113,7 @@ export default function Home() {
         title="Il bancone digitale per ogni bottega"
         subtitle="Sito web, prenotazioni, clienti — tutto in un posto"
         ctaLabel="Guarda la demo"
-        ctaHref="/dashboard"
+        ctaHref="#demo"
         secondaryLabel="Scopri i prezzi"
         secondaryHref="#prezzi"
         className="from-amber-50 via-white to-orange-100"
@@ -142,7 +142,7 @@ export default function Home() {
         </FeatureGrid>
       </div>
 
-      <section className="bg-slate-900 py-16 text-white sm:py-20">
+      <section id="demo" className="bg-slate-900 py-16 text-white sm:py-20">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-300">

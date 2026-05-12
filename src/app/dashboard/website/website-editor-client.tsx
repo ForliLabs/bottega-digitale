@@ -248,9 +248,16 @@ export function WebsiteEditorClient({
                 <h2 className="mt-5 text-3xl font-bold text-slate-900">{form.name}</h2>
                 <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">{form.description}</p>
                 <div className="mt-6 flex flex-wrap gap-3 text-sm font-medium">
-                  <span className="rounded-full bg-slate-900 px-4 py-2 text-white">Prenota ora</span>
-                  <span className="rounded-full border border-slate-300 px-4 py-2 text-slate-700">Chiama {form.phone}</span>
+                  <span className="relative cursor-default rounded-full bg-slate-900 px-4 py-2 text-white opacity-60" aria-label="Anteprima: Prenota ora (non cliccabile)" title="Anteprima — non cliccabile">
+                    Prenota ora
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] text-slate-900" aria-hidden="true">👁</span>
+                  </span>
+                  <span className="relative cursor-default rounded-full border border-slate-300 px-4 py-2 text-slate-700 opacity-60" aria-label="Anteprima: Chiama (non cliccabile)" title="Anteprima — non cliccabile">
+                    Chiama {form.phone}
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] text-slate-900" aria-hidden="true">👁</span>
+                  </span>
                 </div>
+                <p className="mt-2 text-xs text-slate-400">👁 I pulsanti sono solo anteprima e non interattivi.</p>
               </div>
 
               <div className="grid gap-6 px-8 py-8 lg:grid-cols-[1.1fr_0.9fr]">

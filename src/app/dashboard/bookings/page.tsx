@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
+import Link from "next/link";
 import { bookingsStore, businessProfile } from "@/lib/data";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/feedback";
 
 const dayFormatter = new Intl.DateTimeFormat("it-IT", {
   weekday: "short",
@@ -25,6 +27,40 @@ export default async function BookingsPage() {
   const bookings = (await bookingsStore.findAll()).sort(
     (left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt)
   );
+
+  if (bookings.length === 0) {
+    return (
+      <div className="space-y-8">
+        <section className="flex flex-col gap-3">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">
+            Agenda prenotazioni
+          </p>
+          <h1 className="text-3xl font-bold text-slate-900">Calendario appuntamenti</h1>
+        </section>
+        <EmptyState
+          icon="📅"
+          title="Nessuna prenotazione ancora"
+          description="Pubblica il tuo sito e condividi il link per ricevere le prime prenotazioni dai clienti."
+          action={
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Link
+                href="/dashboard/website"
+                className="inline-flex rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700"
+              >
+                Pubblica il sito
+              </Link>
+              <Link
+                href="/dashboard/onboarding"
+                className="inline-flex rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Guida introduttiva
+              </Link>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
 
   const calendarDays = Array.from({ length: 6 }, (_, index) => {
     const date = new Date();

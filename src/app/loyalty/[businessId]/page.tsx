@@ -16,6 +16,64 @@ interface LoyaltyData {
   recentRedemptions?: Array<{ id: string; reward: string; createdAt: string }>;
 }
 
+function CodeEntryForm({ businessId }: { businessId: string }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setError("Inserisci il codice della tua carta fedeltà.");
+      return;
+    }
+    window.location.href = `/loyalty/${businessId}?c=${encodeURIComponent(trimmed)}`;
+  }
+
+  return (
+    <div className="flex min-h-[80vh] items-center justify-center bg-amber-50 px-4">
+      <div className="w-full max-w-md">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="text-center">
+            <span className="text-4xl">🏷️</span>
+            <h1 className="mt-3 text-2xl font-bold text-slate-900">Carta Fedeltà</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Inserisci il codice ricevuto dal negozio per visualizzare i tuoi punti.
+            </p>
+          </div>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+            <div>
+              <label htmlFor="loyalty-code" className="mb-1 block text-sm font-medium text-slate-700">
+                Codice cliente
+              </label>
+              <input
+                id="loyalty-code"
+                value={code}
+                onChange={(e) => { setCode(e.target.value); setError(""); }}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
+                placeholder="Es. abc123"
+                autoFocus
+              />
+            </div>
+            {error && (
+              <p className="text-sm font-medium text-red-600" role="alert">{error}</p>
+            )}
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700"
+            >
+              Vedi i miei punti
+            </button>
+          </form>
+          <p className="mt-6 text-center text-xs text-slate-400">
+            Non hai un codice? Chiedi al negozio il tuo link personale.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LoyaltyPublicPage({
   params,
 }: {
@@ -28,9 +86,8 @@ export default function LoyaltyPublicPage({
   });
   const [data, setData] = useState<LoyaltyData | null>(null);
   const [loading, setLoading] = useState(() => customerId.length > 0);
-  const [error, setError] = useState(() =>
-    customerId ? "" : "Link non valido. Chiedi al negozio il tuo link personale.",
-  );
+  const [error, setError] = useState("");
+  const [showCodeEntry, setShowCodeEntry] = useState(() => !customerId);
 
   useEffect(() => {
     if (!customerId) return;
@@ -45,6 +102,10 @@ export default function LoyaltyPublicPage({
       .finally(() => setLoading(false));
   }, [businessId, customerId]);
 
+  if (showCodeEntry) {
+    return <CodeEntryForm businessId={businessId} />;
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
@@ -56,9 +117,16 @@ export default function LoyaltyPublicPage({
   if (error || !data) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center px-4">
-        <div className="text-center">
+        <div className="w-full max-w-md text-center">
           <span className="text-4xl">🏷️</span>
-          <p className="mt-4 text-lg font-medium text-slate-700">{error}</p>
+          <p className="mt-4 text-lg font-medium text-slate-700">{error || "Impossibile caricare la carta."}</p>
+          <button
+            type="button"
+            onClick={() => setShowCodeEntry(true)}
+            className="mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Inserisci un altro codice
+          </button>
         </div>
       </div>
     );

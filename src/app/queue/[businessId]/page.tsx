@@ -145,7 +145,34 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
             )}
           </div>
 
-          {!entryId ? (
+          {!entryId && !businessLoading && error && !businessName ? (
+            <div className="mt-8 space-y-4 text-center">
+              <InlineMessage tone="error" title={error} />
+              <p className="text-xs text-slate-500">
+                Potrebbe essere un problema temporaneo. Controlla la connessione e riprova.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setBusinessLoading(true);
+                  fetch(`/api/queue?businessId=${businessId}`)
+                    .then(async (response) => {
+                      const data = await response.json();
+                      if (!response.ok) {
+                        throw new Error(data.error || "Impossibile caricare la coda");
+                      }
+                      setBusinessName(data.businessName || "Coda digitale");
+                    })
+                    .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Impossibile caricare la coda"))
+                    .finally(() => setBusinessLoading(false));
+                }}
+                className="w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700"
+              >
+                Riprova
+              </button>
+            </div>
+          ) : !entryId ? (
             <form onSubmit={joinQueue} className="mt-8 space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Nome *</label>
@@ -170,7 +197,21 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
                   inputMode="tel"
                 />
               </div>
-              {error ? <InlineMessage tone="error" title={error} /> : null}
+              {error ? (
+                <div className="space-y-3">
+                  <InlineMessage tone="error" title={error} />
+                  <p className="text-xs text-slate-500">
+                    Potrebbe essere un problema temporaneo di connessione. Controlla la rete e riprova.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setError(""); }}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancella errore e riprova
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="submit"
                 disabled={loading || businessLoading}
