@@ -1,0 +1,14 @@
+# Default owners for everything in the repo
+* @josedab
+
+# Frontend / UI
+/src/components/ @josedab
+/src/app/ @josedab
+
+# Infrastructure & CI
+/.github/ @josedab
+/Dockerfile @josedab
+/docker-compose.yml @josedab
+
+# Database & schema
+/prisma/ @josedab
