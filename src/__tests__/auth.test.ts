@@ -1,6 +1,6 @@
 // Unit tests for auth module
 import { describe, it, expect } from "vitest";
-import { hashPassword, verifyPassword, generateToken } from "@/lib/auth";
+import { hashPassword, verifyPassword, generateToken, hashSessionToken } from "@/lib/auth";
 
 describe("Auth — Password Hashing", () => {
   it("should hash a password", async () => {
@@ -52,5 +52,31 @@ describe("Auth — Token Generation", () => {
   it("should only contain hex characters", () => {
     const token = generateToken();
     expect(/^[a-f0-9]+$/.test(token)).toBe(true);
+  });
+});
+
+describe("Auth — Session Token Hashing", () => {
+  it("should produce a 64-character hex SHA-256 hash", () => {
+    const token = generateToken();
+    const hash = hashSessionToken(token);
+    expect(hash.length).toBe(64);
+    expect(/^[a-f0-9]+$/.test(hash)).toBe(true);
+  });
+
+  it("should produce consistent hashes for the same token", () => {
+    const token = generateToken();
+    expect(hashSessionToken(token)).toBe(hashSessionToken(token));
+  });
+
+  it("should produce different hashes for different tokens", () => {
+    const token1 = generateToken();
+    const token2 = generateToken();
+    expect(hashSessionToken(token1)).not.toBe(hashSessionToken(token2));
+  });
+
+  it("should not return the original token", () => {
+    const token = generateToken();
+    const hash = hashSessionToken(token);
+    expect(hash).not.toBe(token);
   });
 });
