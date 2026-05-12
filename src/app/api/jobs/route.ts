@@ -14,10 +14,10 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const action = payload.action || "process";
 
-    // Simple auth via secret header (for cron endpoints)
+    // Auth via secret header — deny by default when CRON_SECRET is unset
     const cronSecret = request.headers.get("x-cron-secret");
     const expectedSecret = process.env.CRON_SECRET;
-    if (expectedSecret && cronSecret !== expectedSecret) {
+    if (!expectedSecret || cronSecret !== expectedSecret) {
       return Response.json({ error: "Non autorizzato" }, { status: 401 });
     }
 

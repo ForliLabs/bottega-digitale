@@ -178,9 +178,22 @@ export async function getBusinessContext(): Promise<Business | null> {
 
 /**
  * Get the current business context for authenticated routes only.
- * Returns `null` when the requester is not authenticated.
+ * Throws an error when the requester is not authenticated, ensuring
+ * callers never receive a null value for guarded routes.
  */
-export async function requireBusinessContext(): Promise<Business | null> {
+export async function requireBusinessContext(): Promise<Business> {
   const auth = await getAuthContext();
-  return auth?.business ?? null;
+  if (!auth?.business) {
+    throw new AuthenticationError("Autenticazione richiesta");
+  }
+  return auth.business;
+}
+
+/** Error thrown when authentication is required but missing. */
+export class AuthenticationError extends Error {
+  public readonly statusCode = 401;
+  constructor(message = "Autenticazione richiesta") {
+    super(message);
+    this.name = "AuthenticationError";
+  }
 }

@@ -1,21 +1,30 @@
 import { prisma } from "@/lib/prisma";
 import { handleInboundMessage } from "@/lib/whatsapp-ai";
 import { sendTextMessage } from "@/lib/whatsapp";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
 // Webhook for inbound WhatsApp messages → AI processing
 export async function POST(request: Request) {
+  const business = await requireBusinessContext();
+  if (!business) {
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
+  }
+
   try {
     const payload = await request.json();
-    const { businessId, phone, message } = payload;
+    const { phone, message } = payload;
 
-    if (!businessId || !phone || !message) {
+    if (!phone || !message) {
       return Response.json(
-        { error: "Campi obbligatori: businessId, phone, message" },
+        { error: "Campi obbligatori: phone, message" },
         { status: 400 }
       );
     }
+
+    const businessId = business.id;
 
     // Log inbound message
     await prisma.whatsappMessage.create({
@@ -44,9 +53,10 @@ export async function POST(request: Request) {
     });
 
     // Send via WhatsApp API if configured
-    const business = await prisma.business.findUnique({ where: { id: businessId } });
-    if (business?.whatsappPhoneId) {
-      await sendTextMessage(business.whatsappPhoneId, phone, reply).catch(() => {});
+    if (business.whatsappPhoneId) {
+      await sendTextMessage(business.whatsappPhoneId, phone, reply).catch((err) => {
+        console.error("[whatsapp-ai] Failed to send reply via WhatsApp API:", err);
+      });
     }
 
     return Response.json({ reply, status: "sent" });
@@ -59,13 +69,13 @@ export async function POST(request: Request) {
 }
 
 // Get conversation stats
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const businessId = searchParams.get("businessId");
-
-  if (!businessId) {
-    return Response.json({ error: "businessId richiesto" }, { status: 400 });
+export async function GET() {
+  const business = await requireBusinessContext();
+  if (!business) {
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
   }
+
+  const businessId = business.id;
 
   const stats = await prisma.whatsappMessage.groupBy({
     by: ["direction"],

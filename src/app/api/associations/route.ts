@@ -1,10 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { getAssociationStats, bulkOnboardBusinesses, parseCSVBusinesses } from "@/lib/association-portal";
 import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
+import { getAuthContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const auth = await getAuthContext();
+  if (!auth) {
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
+  }
+
   const { searchParams } = new URL(request.url);
   const associationId = searchParams.get("associationId");
 
@@ -20,6 +26,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await getAuthContext();
+  if (!auth) {
+    return apiError("Autenticazione richiesta", 401, "unauthorized");
+  }
+
   const csrfError = ensureSameOrigin(request);
   if (csrfError) {
     return csrfError;
