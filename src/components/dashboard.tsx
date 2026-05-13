@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { CommandPalette, type CommandItem } from "@/components/command-palette";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 interface SidebarItem {
@@ -121,6 +122,20 @@ export function DashboardShell({ brand, sections, children }: DashboardLayoutPro
 
   const allItems = useMemo(() => sections.flatMap((s) => s.items), [sections]);
   const primaryItems = useMemo(() => allItems.slice(0, 5), [allItems]);
+
+  const commandItems: CommandItem[] = useMemo(
+    () =>
+      sections.flatMap((section) =>
+        section.items.map((item) => ({
+          id: item.href,
+          label: item.label,
+          href: item.href,
+          section: section.label,
+          icon: item.icon,
+        })),
+      ),
+    [sections],
+  );
 
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
 
@@ -255,6 +270,8 @@ export function DashboardShell({ brand, sections, children }: DashboardLayoutPro
           </div>
         </main>
       </div>
+
+      <CommandPalette items={commandItems} />
     </div>
   );
 }
