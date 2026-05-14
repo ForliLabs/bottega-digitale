@@ -9,7 +9,7 @@
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://typescriptlang.org)
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma)](https://prisma.io)
-[![Tests](https://img.shields.io/badge/tests-517-green)]()
+[![Tests](https://img.shields.io/badge/tests-780-green)]()
 
 </div>
 
