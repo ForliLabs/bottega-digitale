@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     const result = await applyTemplate(business.id, template.id);
     if ("error" in result) {
-      return apiError(result.error, 400, "template_apply_failed");
+      return apiError(result.error ?? "Template application failed", 400, "template_apply_failed");
     }
 
     return apiJson({ template: template.label, ...result });

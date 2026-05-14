@@ -7,7 +7,7 @@ import {
   isGoogleConfigured,
 } from "@/lib/google-business";
 
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   const auth = await getAuthContext();
   if (!auth) {
     return Response.json({ error: "Non autenticato." }, { status: 401 });

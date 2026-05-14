@@ -83,7 +83,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
         <div>
           <h2 className="text-xl font-bold text-slate-900">🎁 Buoni Regalo</h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-500">
-            Acquista subito un Bottega Credit, personalizza il messaggio e condividi il codice digitale senza passare dall'assistenza.
+            Acquista subito un Bottega Credit, personalizza il messaggio e condividi il codice digitale senza passare dall&apos;assistenza.
           </p>
         </div>
         <GiftCardPurchasePanel amounts={GIFT_CARD_AMOUNTS} />

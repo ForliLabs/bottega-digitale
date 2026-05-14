@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
       const result = await redeemGiftCard(String(payload.code).trim().toUpperCase(), amountEuro, business.id);
       if ("error" in result) {
-        return apiError(result.error, 400, "gift_card_redeem_failed");
+        return apiError(result.error ?? "Gift card redemption failed", 400, "gift_card_redeem_failed");
       }
       return apiJson(result);
     }

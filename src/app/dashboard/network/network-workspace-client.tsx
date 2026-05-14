@@ -242,7 +242,7 @@ export function NetworkWorkspaceClient({
         </div>
         <div className="divide-y divide-slate-100">
           {partnerships.length === 0 ? (
-            <div className="px-6 py-12 text-center text-sm text-slate-400">Nessuna partnership. Invita un'attività dalla directory per iniziare.</div>
+            <div className="px-6 py-12 text-center text-sm text-slate-400">Nessuna partnership. Invita un&apos;attività dalla directory per iniziare.</div>
           ) : partnerships.map((partnership) => {
             const promotion = promotionMap.get(partnership.id);
             return (

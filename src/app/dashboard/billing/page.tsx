@@ -1,5 +1,4 @@
 export const dynamic = "force-dynamic";
-import { prisma } from "@/lib/prisma";
 import { getBusinessContext } from "@/lib/auth";
 import { PRICING_TIERS, isStripeConfigured } from "@/lib/stripe";
 
