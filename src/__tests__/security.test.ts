@@ -1,6 +1,6 @@
 // Unit tests for security module
 import { describe, it, expect } from "vitest";
-import { sanitizeHtml, sanitizeForSQL, generateCSRFToken, validateCSRFToken, validateInput } from "@/lib/security";
+import { sanitizeHtml, generateCSRFToken, validateCSRFToken, validateInput } from "@/lib/security";
 
 describe("Security — HTML Sanitization", () => {
   it("should escape HTML tags", () => {
@@ -25,18 +25,6 @@ describe("Security — HTML Sanitization", () => {
   it("should escape quotes", () => {
     const result = sanitizeHtml('He said "hello"');
     expect(result).toContain("&quot;");
-  });
-});
-
-describe("Security — SQL Sanitization", () => {
-  it("should remove dangerous characters", () => {
-    const result = sanitizeForSQL("'; DROP TABLE users; --");
-    expect(result).not.toContain("'");
-    expect(result).not.toContain(";");
-  });
-
-  it("should preserve safe strings", () => {
-    expect(sanitizeForSQL("Marco Rossi")).toBe("Marco Rossi");
   });
 });
 

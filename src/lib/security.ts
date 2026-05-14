@@ -252,7 +252,3 @@ export function sanitizeHtml(input: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;");
 }
-
-export function sanitizeForSQL(input: string): string {
-  return input.replace(/['";\\]/g, "");
-}

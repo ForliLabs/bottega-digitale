@@ -1,7 +1,7 @@
 // Integration Tests — Event Router (Feature 1)
 // Tests the unified event backbone that dispatches to automation, SSE, webhooks, and analytics
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { emit, events, getEventRouterStats, type CanonicalEventType, type PlatformEvent } from "@/lib/event-router";
+import { emit, events, getEventRouterStats, type CanonicalEventType } from "@/lib/event-router";
 import { broadcaster } from "@/lib/realtime";
 
 // Mock the downstream systems to verify dispatch
