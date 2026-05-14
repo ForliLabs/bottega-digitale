@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessContext } from "@/lib/auth";
 import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
+import { createProductSchema } from "@/lib/validations/products";
 
 export const dynamic = "force-dynamic";
 
@@ -32,16 +33,22 @@ export async function POST(request: Request) {
     }
 
     const payload = await request.json();
+    const result = createProductSchema.safeParse(payload);
+    if (!result.success) {
+      return apiError("Dati non validi", 400, "validation_error");
+    }
+
+    const data = result.data;
     const product = await prisma.product.create({
       data: {
         businessId: business.id,
-        name: payload.name,
-        description: payload.description || "",
-        priceEuro: payload.priceEuro || 0,
-        categoryId: payload.categoryId || null,
-        imageUrl: payload.imageUrl || null,
-        stock: payload.stock ?? -1,
-        isAvailable: payload.isAvailable ?? true,
+        name: data.name,
+        description: data.description,
+        priceEuro: data.priceEuro,
+        categoryId: data.categoryId ?? null,
+        imageUrl: data.imageUrl ?? null,
+        stock: data.stock,
+        isAvailable: data.isAvailable,
       },
     });
 

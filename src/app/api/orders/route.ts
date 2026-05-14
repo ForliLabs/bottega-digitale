@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireBusinessContext } from "@/lib/auth";
 import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 import { createOrder } from "@/lib/product-catalog";
+import { createOrderSchema } from "@/lib/validations/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +35,19 @@ export async function POST(request: Request) {
     }
 
     const payload = await request.json();
+    const result = createOrderSchema.safeParse(payload);
+    if (!result.success) {
+      return apiError("Dati non validi", 400, "validation_error");
+    }
+
+    const data = result.data;
     const order = await createOrder({
       businessId: business.id,
-      customerName: payload.customerName || "Cliente",
-      customerPhone: payload.customerPhone,
-      channel: payload.channel || "online",
-      items: payload.items || [],
-      notes: payload.notes,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone ?? undefined,
+      channel: data.channel,
+      items: data.items,
+      notes: data.notes ?? undefined,
     });
 
     return apiJson(order, { status: 201 });

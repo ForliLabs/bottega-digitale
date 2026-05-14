@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessContext } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/api-response";
+import { createBookingSchema } from "@/lib/validations/bookings";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const payload = await request.json();
     const business = await requireBusinessContext();
@@ -26,18 +31,27 @@ export async function POST(request: Request) {
       return Response.json({ error: "Autenticazione richiesta" }, { status: 401 });
     }
 
+    const result = createBookingSchema.safeParse(payload);
+    if (!result.success) {
+      return Response.json(
+        { error: "Dati non validi", details: result.error.issues },
+        { status: 400 },
+      );
+    }
+
+    const data = result.data;
     const booking = await prisma.booking.create({
       data: {
         businessId: business.id,
-        customerName: payload.customerName ?? "Cliente senza nome",
-        service: payload.service ?? "Taglio classico",
-        startsAt: new Date(payload.startsAt ?? new Date()),
-        durationMinutes: payload.durationMinutes ?? 30,
-        status: payload.status ?? "Confermata",
-        channel: payload.channel ?? "Sito web",
-        priceEuro: payload.priceEuro ?? 22,
-        notes: payload.notes ?? null,
-        customerId: payload.customerId ?? null,
+        customerName: data.customerName,
+        service: data.service,
+        startsAt: new Date(data.startsAt),
+        durationMinutes: data.durationMinutes,
+        status: data.status,
+        channel: data.channel,
+        priceEuro: data.priceEuro,
+        notes: data.notes ?? null,
+        customerId: data.customerId ?? null,
       },
     });
 
@@ -45,7 +59,7 @@ export async function POST(request: Request) {
   } catch {
     return Response.json(
       { error: "Richiesta non valida per la creazione della prenotazione." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

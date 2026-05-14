@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireBusinessContext } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/api-response";
+import { createCustomerSchema } from "@/lib/validations/customers";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const payload = await request.json();
     const business = await requireBusinessContext();
@@ -26,14 +31,27 @@ export async function POST(request: Request) {
       return Response.json({ error: "Autenticazione richiesta" }, { status: 401 });
     }
 
+    const result = createCustomerSchema.safeParse(payload);
+    if (!result.success) {
+      return Response.json(
+        { error: "Dati non validi", details: result.error.issues },
+        { status: 400 },
+      );
+    }
+
+    const data = result.data;
     const customer = await prisma.customer.create({
       data: {
         businessId: business.id,
-        name: payload.name ?? "Nuovo cliente",
-        phone: payload.phone ?? "+39 0543 000000",
-        lastVisit: new Date(payload.lastVisit ?? new Date()),
-        totalVisits: payload.totalVisits ?? 1,
-        loyaltyPoints: payload.loyaltyPoints ?? 10,
+        name: data.name,
+        phone: data.phone,
+        email: data.email ?? null,
+        birthday: data.birthday ? new Date(data.birthday) : null,
+        lastVisit: new Date(),
+        totalVisits: data.totalVisits,
+        loyaltyPoints: data.loyaltyPoints,
+        notifyWhatsApp: data.notifyWhatsApp,
+        notifyPush: data.notifyPush,
       },
     });
 
@@ -41,7 +59,7 @@ export async function POST(request: Request) {
   } catch {
     return Response.json(
       { error: "Richiesta non valida per la creazione del cliente." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
