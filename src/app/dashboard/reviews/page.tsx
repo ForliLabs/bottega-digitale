@@ -1,5 +1,9 @@
 export const dynamic = "force-dynamic";
-import { businessProfile, calculateAverageRating, sampleReviews } from "@/lib/data";
+import {
+  getDashboardBusinessProfile,
+  getDashboardReviews,
+} from "@/lib/dashboard-data";
+import { calculateAverageRating } from "@/lib/data";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   day: "2-digit",
@@ -11,8 +15,10 @@ function renderStars(rating: number) {
   return `${"★".repeat(rating)}${"☆".repeat(5 - rating)}`;
 }
 
-export default function ReviewsPage() {
-  const averageRating = calculateAverageRating(sampleReviews);
+export default async function ReviewsPage() {
+  const { data: businessProfile } = await getDashboardBusinessProfile();
+  const { data: reviews } = await getDashboardReviews();
+  const averageRating = calculateAverageRating(reviews);
 
   return (
     <div className="space-y-8">
@@ -38,16 +44,16 @@ export default function ReviewsPage() {
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Recensioni analizzate</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{sampleReviews.length}</p>
+          <p className="mt-2 text-3xl font-bold text-slate-900">{reviews.length}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Bozze pronte</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{sampleReviews.length}</p>
+          <p className="mt-2 text-3xl font-bold text-slate-900">{reviews.filter((r) => r.responseSuggestion).length}</p>
         </div>
       </section>
 
       <section className="space-y-4">
-        {sampleReviews.map((review) => (
+        {reviews.map((review) => (
           <article key={review.id} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>

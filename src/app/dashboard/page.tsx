@@ -2,12 +2,13 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { StatCard } from "@/components/dashboard";
 import {
-  bookingsStore,
-  businessProfile,
-  calculateDashboardMetrics,
-  customersStore,
-  sampleReviews,
-} from "@/lib/data";
+  getDashboardBookings,
+  getDashboardCustomers,
+  getDashboardReviews,
+  getDashboardBusinessProfile,
+} from "@/lib/dashboard-data";
+import { calculateDashboardMetrics } from "@/lib/data";
+import { buildDailyBriefing } from "@/lib/daily-briefing";
 
 const numberFormatter = new Intl.NumberFormat("it-IT");
 const dateTimeFormatter = new Intl.DateTimeFormat("it-IT", {
@@ -19,12 +20,16 @@ const dateTimeFormatter = new Intl.DateTimeFormat("it-IT", {
 });
 
 export default async function DashboardPage() {
-  const bookings = await bookingsStore.findAll();
-  const customers = await customersStore.findAll();
-  const metrics = calculateDashboardMetrics(bookings, customers, sampleReviews);
+  const { data: bookings, isDemoData: bookingsDemo } = await getDashboardBookings();
+  const { data: customers, isDemoData: customersDemo } = await getDashboardCustomers();
+  const { data: reviews } = await getDashboardReviews();
+  const { data: businessProfile, isDemoData: profileDemo } = await getDashboardBusinessProfile();
+  const metrics = calculateDashboardMetrics(bookings, customers, reviews);
+  const briefing = await buildDailyBriefing();
   const recentBookings = [...bookings]
     .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt))
     .slice(0, 5);
+  const showDemoBanner = bookingsDemo || customersDemo || profileDemo;
 
   const quickActions = [
     {
@@ -49,6 +54,17 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {showDemoBanner && (
+        <div
+          role="status"
+          className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
+        >
+          <p className="font-semibold">📌 Stai visualizzando dati demo</p>
+          <p className="mt-1 opacity-80">
+            I dati mostrati sono di esempio. Collega il tuo negozio per vedere dati reali.
+          </p>
+        </div>
+      )}
       <section className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-8 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -97,6 +113,70 @@ export default async function DashboardPage() {
           change={`${metrics.reviewsCount} recensioni pubblicate`}
           trend="up"
         />
+      </section>
+
+      {/* Riepilogo del Giorno */}
+      <section className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-slate-50 p-6 shadow-sm">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">
+              📋 {briefing.greeting} — Riepilogo del giorno
+            </h2>
+            <p className="text-sm text-slate-500">{briefing.date}</p>
+          </div>
+          <div className="mt-2 flex gap-4 sm:mt-0">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-slate-900">{briefing.bookingsToday}</p>
+              <p className="text-xs text-slate-500">Appuntamenti</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-slate-900">
+                €{briefing.revenueToday.toLocaleString("it-IT", { minimumFractionDigits: 0 })}
+              </p>
+              <p className="text-xs text-slate-500">Incasso previsto</p>
+            </div>
+          </div>
+        </div>
+
+        {briefing.nextBooking && (
+          <div className="mt-4 rounded-xl bg-white/80 p-3 text-sm">
+            <span className="font-semibold text-indigo-700">Prossimo →</span>{" "}
+            <span className="text-slate-700">
+              {briefing.nextBooking.time} · {briefing.nextBooking.customerName} · {briefing.nextBooking.service}
+            </span>
+          </div>
+        )}
+
+        {briefing.alerts.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {briefing.alerts.map((alert, i) => (
+              <div
+                key={i}
+                className={`rounded-xl px-4 py-2.5 text-sm font-medium ${
+                  alert.type === "warning"
+                    ? "bg-amber-50 text-amber-800"
+                    : alert.type === "success"
+                      ? "bg-emerald-50 text-emerald-800"
+                      : "bg-sky-50 text-sky-800"
+                }`}
+              >
+                {alert.type === "warning" ? "⚠️" : alert.type === "success" ? "🎉" : "💡"}{" "}
+                {alert.message}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {briefing.highlights.length > 0 && (
+          <ul className="mt-4 space-y-1 text-sm text-slate-600">
+            {briefing.highlights.map((h, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="mt-0.5 text-indigo-400">•</span>
+                {h}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">

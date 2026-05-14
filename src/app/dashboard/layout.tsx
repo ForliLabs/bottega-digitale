@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { SidebarSection } from "@/components/dashboard";
 import { DashboardShell } from "@/components/dashboard";
+import type { CommandItem } from "@/components/command-palette";
 
 const sections: SidebarSection[] = [
   {
@@ -141,9 +142,61 @@ const sections: SidebarSection[] = [
   },
 ];
 
+// Quick-action items surfaced in the command palette for common tasks
+const quickActions: CommandItem[] = [
+  {
+    id: "action-nuova-prenotazione",
+    label: "Nuova prenotazione",
+    href: "/dashboard/bookings",
+    section: "Azioni rapide",
+    keywords: ["crea", "aggiungi", "appuntamento", "nuovo", "booking"],
+    icon: <span aria-hidden="true">➕</span>,
+  },
+  {
+    id: "action-riepilogo",
+    label: "Riepilogo del giorno",
+    href: "/dashboard",
+    section: "Azioni rapide",
+    keywords: ["briefing", "sommario", "oggi", "giornata", "daily"],
+    icon: <span aria-hidden="true">📋</span>,
+  },
+  {
+    id: "action-impostazioni",
+    label: "Impostazioni negozio",
+    href: "/dashboard/settings",
+    section: "Azioni rapide",
+    keywords: ["settings", "configurazione", "profilo", "negozio"],
+    icon: <span aria-hidden="true">⚙️</span>,
+  },
+  {
+    id: "action-privacy",
+    label: "Privacy e GDPR",
+    href: "/dashboard/privacy",
+    section: "Azioni rapide",
+    keywords: ["gdpr", "consenso", "dati", "privacy", "export"],
+    icon: <span aria-hidden="true">🔒</span>,
+  },
+  {
+    id: "action-media",
+    label: "Libreria media",
+    href: "/dashboard/media",
+    section: "Azioni rapide",
+    keywords: ["foto", "immagini", "upload", "media", "galleria"],
+    icon: <span aria-hidden="true">🖼️</span>,
+  },
+  {
+    id: "action-onboarding",
+    label: "Guida introduttiva",
+    href: "/dashboard/onboarding",
+    section: "Azioni rapide",
+    keywords: ["setup", "guida", "iniziare", "tutorial", "onboarding"],
+    icon: <span aria-hidden="true">🎓</span>,
+  },
+];
+
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <DashboardShell brand="Bottega Digitale" sections={sections}>
+    <DashboardShell brand="Bottega Digitale" sections={sections} extraCommandItems={quickActions}>
       {children}
     </DashboardShell>
   );

@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
-import { bookingsStore, businessProfile } from "@/lib/data";
+import { getDashboardBookings, getDashboardBusinessProfile } from "@/lib/dashboard-data";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/feedback";
 
@@ -24,7 +24,9 @@ function sameCalendarDay(left: Date, right: Date) {
 }
 
 export default async function BookingsPage() {
-  const bookings = (await bookingsStore.findAll()).sort(
+  const { data: businessProfile } = await getDashboardBusinessProfile();
+  const { data: allBookings } = await getDashboardBookings();
+  const bookings = [...allBookings].sort(
     (left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt)
   );
 
@@ -122,15 +124,40 @@ export default async function BookingsPage() {
           <h2 className="text-lg font-semibold text-slate-900">Prossimi appuntamenti</h2>
           <p className="text-sm text-slate-500">Vista elenco per il team in bottega.</p>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile card layout (below md) */}
+        <div className="divide-y divide-slate-100 md:hidden">
+          {bookings.map((booking) => (
+            <div key={booking.id} className="px-5 py-4 space-y-1">
+              <p className="font-medium text-slate-900">{booking.customerName}</p>
+              <p className="text-sm text-slate-600">{booking.service}</p>
+              <p className="text-sm text-slate-500">
+                {dayFormatter.format(new Date(booking.startsAt))} · {timeFormatter.format(new Date(booking.startsAt))}
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <span className="rounded-full bg-slate-100 px-3 py-0.5 text-xs font-medium text-slate-700">
+                  {booking.channel}
+                </span>
+                <StatusBadge
+                  tone={booking.status === "Confermata" ? "success" : "warning"}
+                  label={booking.status}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table (md and above) */}
+        <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <caption className="sr-only">Elenco prossimi appuntamenti</caption>
             <thead className="bg-slate-50 text-left text-slate-500">
               <tr>
-                <th className="px-6 py-3 font-medium">Cliente</th>
-                <th className="px-6 py-3 font-medium">Servizio</th>
-                <th className="px-6 py-3 font-medium">Quando</th>
-                <th className="px-6 py-3 font-medium">Canale</th>
-                <th className="px-6 py-3 font-medium">Stato</th>
+                <th scope="col" className="px-6 py-3 font-medium">Cliente</th>
+                <th scope="col" className="px-6 py-3 font-medium">Servizio</th>
+                <th scope="col" className="px-6 py-3 font-medium">Quando</th>
+                <th scope="col" className="px-6 py-3 font-medium">Canale</th>
+                <th scope="col" className="px-6 py-3 font-medium">Stato</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">

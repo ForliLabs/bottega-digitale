@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
-import { customersStore } from "@/lib/data";
+import { getDashboardCustomers } from "@/lib/dashboard-data";
 import { EmptyState } from "@/components/ui/feedback";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
@@ -10,7 +10,8 @@ const dateFormatter = new Intl.DateTimeFormat("it-IT", {
 });
 
 export default async function CustomersPage() {
-  const customers = (await customersStore.findAll()).sort(
+  const { data: allCustomers } = await getDashboardCustomers();
+  const customers = [...allCustomers].sort(
     (left, right) => Date.parse(right.lastVisit) - Date.parse(left.lastVisit)
   );
 
@@ -75,34 +76,57 @@ export default async function CustomersPage() {
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-slate-500">
-                <tr>
-                  <th className="px-6 py-3 font-medium">Nome</th>
-                  <th className="px-6 py-3 font-medium">Telefono</th>
-                  <th className="px-6 py-3 font-medium">Ultima visita</th>
-                  <th className="px-6 py-3 font-medium">Visite totali</th>
-                  <th className="px-6 py-3 font-medium">Punti fedeltà</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-                {customers.map((customer) => (
-                  <tr key={customer.id}>
-                    <td className="px-6 py-4 font-medium text-slate-900">{customer.name}</td>
-                    <td className="px-6 py-4">{customer.phone}</td>
-                    <td className="px-6 py-4">{dateFormatter.format(new Date(customer.lastVisit))}</td>
-                    <td className="px-6 py-4">{customer.totalVisits}</td>
-                    <td className="px-6 py-4">
-                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                        {customer.loyaltyPoints} punti
-                      </span>
-                    </td>
+          <>
+            {/* Mobile card layout (below md) */}
+            <div className="divide-y divide-slate-100 md:hidden">
+              {customers.map((customer) => (
+                <div key={customer.id} className="px-5 py-4 space-y-1">
+                  <p className="font-medium text-slate-900">{customer.name}</p>
+                  <p className="text-sm text-slate-600">{customer.phone}</p>
+                  <p className="text-sm text-slate-500">
+                    Ultima visita: {dateFormatter.format(new Date(customer.lastVisit))}
+                  </p>
+                  <div className="flex items-center gap-3 pt-1 text-sm">
+                    <span className="text-slate-500">{customer.totalVisits} visite</span>
+                    <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-semibold text-amber-800">
+                      {customer.loyaltyPoints} punti
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table (md and above) */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <caption className="sr-only">Elenco clienti della bottega</caption>
+                <thead className="bg-slate-50 text-left text-slate-500">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 font-medium">Nome</th>
+                    <th scope="col" className="px-6 py-3 font-medium">Telefono</th>
+                    <th scope="col" className="px-6 py-3 font-medium">Ultima visita</th>
+                    <th scope="col" className="px-6 py-3 font-medium">Visite totali</th>
+                    <th scope="col" className="px-6 py-3 font-medium">Punti fedeltà</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                  {customers.map((customer) => (
+                    <tr key={customer.id}>
+                      <td className="px-6 py-4 font-medium text-slate-900">{customer.name}</td>
+                      <td className="px-6 py-4">{customer.phone}</td>
+                      <td className="px-6 py-4">{dateFormatter.format(new Date(customer.lastVisit))}</td>
+                      <td className="px-6 py-4">{customer.totalVisits}</td>
+                      <td className="px-6 py-4">
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                          {customer.loyaltyPoints} punti
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

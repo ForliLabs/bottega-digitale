@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { CommandPalette, type CommandItem } from "@/components/command-palette";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 interface SidebarItem {
   label: string;
@@ -22,6 +22,7 @@ export interface SidebarSection {
 interface DashboardLayoutProps {
   brand: string;
   sections: SidebarSection[];
+  extraCommandItems?: CommandItem[];
   children: ReactNode;
 }
 
@@ -116,16 +117,69 @@ function HamburgerIcon({ open }: { open: boolean }) {
   );
 }
 
-export function DashboardShell({ brand, sections, children }: DashboardLayoutProps) {
+export function DashboardShell({ brand, sections, extraCommandItems, children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Move focus into the drawer on open; return focus to trigger on close
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      // Small delay to allow the drawer to render/transition
+      const id = window.setTimeout(() => {
+        drawerRef.current?.focus();
+      }, 50);
+      return () => window.clearTimeout(id);
+    } else {
+      triggerRef.current?.focus();
+    }
+  }, [mobileMenuOpen]);
+
+  // Escape key closes the drawer
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
+
+  // Trap focus inside the drawer while open
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+
+    function handleFocusTrap(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      const focusable = drawer!.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", handleFocusTrap);
+    return () => document.removeEventListener("keydown", handleFocusTrap);
+  }, [mobileMenuOpen]);
 
   const allItems = useMemo(() => sections.flatMap((s) => s.items), [sections]);
   const primaryItems = useMemo(() => allItems.slice(0, 5), [allItems]);
 
   const commandItems: CommandItem[] = useMemo(
-    () =>
-      sections.flatMap((section) =>
+    () => [
+      ...sections.flatMap((section) =>
         section.items.map((item) => ({
           id: item.href,
           label: item.label,
@@ -134,7 +188,9 @@ export function DashboardShell({ brand, sections, children }: DashboardLayoutPro
           icon: item.icon,
         })),
       ),
-    [sections],
+      ...(extraCommandItems ?? []),
+    ],
+    [sections, extraCommandItems],
   );
 
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
@@ -182,11 +238,16 @@ export function DashboardShell({ brand, sections, children }: DashboardLayoutPro
 
       {/* Mobile sidebar drawer */}
       <aside
+        id="dashboard-mobile-drawer"
+        ref={drawerRef}
+        role="dialog"
+        aria-modal={mobileMenuOpen}
+        aria-label="Navigazione dashboard mobile"
+        tabIndex={-1}
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-72 transform border-r border-gray-200 bg-white transition-transform duration-200 ease-in-out lg:hidden",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
-        aria-label="Navigazione dashboard mobile"
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4">
@@ -223,6 +284,7 @@ export function DashboardShell({ brand, sections, children }: DashboardLayoutPro
             <div className="flex items-center gap-3">
               <button
                 type="button"
+                ref={triggerRef}
                 onClick={() => setMobileMenuOpen(true)}
                 aria-expanded={mobileMenuOpen}
                 aria-controls="dashboard-mobile-drawer"

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, use } from "react";
+import { useToast } from "@/components/ui/toast-provider";
 
 interface LoyaltyData {
   businessName: string;
@@ -88,6 +89,7 @@ export default function LoyaltyPublicPage({
   const [loading, setLoading] = useState(() => customerId.length > 0);
   const [error, setError] = useState("");
   const [showCodeEntry, setShowCodeEntry] = useState(() => !customerId);
+  const { notify } = useToast();
 
   useEffect(() => {
     if (!customerId) return;
@@ -101,6 +103,26 @@ export default function LoyaltyPublicPage({
       .catch(() => setError("Errore di connessione."))
       .finally(() => setLoading(false));
   }, [businessId, customerId]);
+
+  const shareCard = useCallback(async () => {
+    if (!data) return;
+    const shareUrl = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${data.businessName} — Carta fedeltà`,
+          text: `${data.customerName} ha ${data.points} punti sulla carta fedeltà di ${data.businessName}`,
+          url: shareUrl,
+        });
+      } catch {
+        // User cancelled share — no action needed
+      }
+      return;
+    }
+
+    await navigator.clipboard.writeText(shareUrl);
+    notify({ title: "Link copiato negli appunti", tone: "success" });
+  }, [data, notify]);
 
   if (showCodeEntry) {
     return <CodeEntryForm businessId={businessId} />;
@@ -135,21 +157,6 @@ export default function LoyaltyPublicPage({
   const loyaltyData = data;
   const progressPercent = Math.min((loyaltyData.points / loyaltyData.threshold) * 100, 100);
 
-  async function shareCard() {
-    const shareUrl = window.location.href;
-    if (navigator.share) {
-      await navigator.share({
-        title: `${loyaltyData.businessName} — Carta fedeltà`,
-        text: `${loyaltyData.customerName} ha ${loyaltyData.points} punti sulla carta fedeltà di ${loyaltyData.businessName}`,
-        url: shareUrl,
-      });
-      return;
-    }
-
-    await navigator.clipboard.writeText(shareUrl);
-    alert("Link copiato negli appunti");
-  }
-
   return (
     <div className="flex min-h-[80vh] items-center justify-center bg-amber-50 px-4">
       <div className="w-full max-w-md">
@@ -168,7 +175,14 @@ export default function LoyaltyPublicPage({
             </p>
 
             {/* Progress bar */}
-            <div className="mt-4 h-4 overflow-hidden rounded-full bg-amber-200">
+            <div
+              className="mt-4 h-4 overflow-hidden rounded-full bg-amber-200"
+              role="progressbar"
+              aria-valuenow={data.points}
+              aria-valuemin={0}
+              aria-valuemax={data.threshold}
+              aria-label={`${data.points} punti su ${data.threshold} per il premio`}
+            >
               <div
                 className="h-full rounded-full bg-amber-500 transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
