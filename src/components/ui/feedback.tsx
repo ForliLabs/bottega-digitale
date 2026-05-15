@@ -61,7 +61,7 @@ export function InlineMessage({
   } as const;
 
   return (
-    <div className={cn("rounded-2xl border px-4 py-3 text-sm", toneStyles[tone])} role="status">
+    <div className={cn("rounded-2xl border px-4 py-3 text-sm", toneStyles[tone])} role={tone === "error" ? "alert" : "status"}>
       <p className="font-semibold">{title}</p>
       {description ? <p className="mt-1 opacity-80">{description}</p> : null}
     </div>

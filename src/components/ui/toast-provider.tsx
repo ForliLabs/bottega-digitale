@@ -52,7 +52,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               "pointer-events-auto w-full max-w-md rounded-2xl border px-4 py-3 shadow-lg",
               toneStyles[toast.tone],
             )}
-            role="status"
+            role={toast.tone === "error" ? "alert" : "status"}
           >
             <p className="text-sm font-semibold">{toast.title}</p>
             {toast.description ? <p className="mt-1 text-sm opacity-80">{toast.description}</p> : null}
