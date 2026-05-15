@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getBusinessContext } from "@/lib/auth";
 import {
   WIZARD_STEPS,
-  BUSINESS_CATEGORIES,
   calculateProgress,
   getNextStep,
   isOnboardingComplete,
@@ -43,9 +42,11 @@ export default async function OnboardingPage() {
     : [];
 
   const stepActions: Record<string, { href: string; label: string }> = {
-    profile: { href: "/dashboard/settings/api", label: "Configura accessi" },
+    // Profile: link to the website editor which holds name/description/contact fields
+    profile: { href: "/dashboard/website", label: "Completa il profilo" },
     services: { href: "/dashboard/products", label: "Aggiungi servizi o prodotti" },
-    hours: { href: "/dashboard/queue", label: "Imposta disponibilità" },
+    // Hours: bookings calendar is where staff set daily availability
+    hours: { href: "/dashboard/bookings", label: "Imposta orari e disponibilità" },
     features: { href: "/dashboard/automations", label: "Attiva funzionalità" },
     website: { href: "/dashboard/website", label: "Controlla il sito" },
     whatsapp: { href: "/dashboard/whatsapp", label: "Collega WhatsApp" },
@@ -59,7 +60,7 @@ export default async function OnboardingPage() {
           Configurazione Guidata
         </p>
         <h1 className="mt-2 text-3xl font-bold text-slate-900">
-          {complete ? "Configurazione completata! 🎉" : "Configura la tua Bottega"}
+          {complete ? <>Configurazione completata! <span aria-hidden="true">🎉</span></> : "Configura la tua Bottega"}
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           {complete
@@ -71,8 +72,15 @@ export default async function OnboardingPage() {
       {/* Progress Ring */}
       <section className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-6">
-          <div className="relative flex h-24 w-24 items-center justify-center">
-            <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
+          <div
+            role="progressbar"
+            aria-valuenow={progress.percentComplete}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Completamento configurazione: ${progress.percentComplete}%`}
+            className="relative flex h-24 w-24 items-center justify-center"
+          >
+            <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
               <circle cx="50" cy="50" r="42" strokeWidth="8" fill="none" className="stroke-slate-100" />
               <circle
                 cx="50" cy="50" r="42"
@@ -84,7 +92,7 @@ export default async function OnboardingPage() {
                 strokeDashoffset={`${2 * Math.PI * 42 * (1 - progress.percentComplete / 100)}`}
               />
             </svg>
-            <span className="absolute text-xl font-bold text-slate-900">{progress.percentComplete}%</span>
+            <span className="absolute text-xl font-bold text-slate-900" aria-hidden="true">{progress.percentComplete}%</span>
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-900">
@@ -95,7 +103,7 @@ export default async function OnboardingPage() {
             </p>
             {nextStep && (
               <p className="mt-1 text-sm text-emerald-600">
-                Prossimo: {nextStep.icon} {nextStep.title}
+                Prossimo: <span aria-hidden="true">{nextStep.icon}</span> {nextStep.title}
               </p>
             )}
           </div>
@@ -160,31 +168,6 @@ export default async function OnboardingPage() {
           );
         })}
       </section>
-
-      {/* Business Categories */}
-      {!business && (
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-700">Che tipo di attività hai?</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {BUSINESS_CATEGORIES.filter((c) => c.category !== "altro").map((cat) => (
-              <div
-                key={cat.category}
-                className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-center transition-all hover:border-emerald-300 hover:shadow-sm"
-              >
-                <p className="text-3xl">{cat.icon}</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">{cat.label}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {cat.isServiceBased && cat.isProductBased
-                    ? "Servizi + Prodotti"
-                    : cat.isServiceBased
-                      ? "Servizi"
-                      : "Prodotti"}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Activation Nudges */}
       {nudges.length > 0 && (

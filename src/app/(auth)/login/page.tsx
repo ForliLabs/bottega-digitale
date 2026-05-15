@@ -37,6 +37,8 @@ export default function LoginPage() {
     }
   }
 
+  const hasError = !!error;
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="w-full max-w-md">
@@ -59,33 +61,52 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                aria-describedby={hasError ? "login-error" : undefined}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                 placeholder="nome@attivita.it"
+                autoComplete="email"
               />
             </div>
             <div>
-              <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
-                Password
-              </label>
+              <div className="mb-1 flex items-center justify-between">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+                  Password
+                </label>
+                <Link
+                  href="/reset-password"
+                  className="text-xs text-amber-600 hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1 rounded"
+                >
+                  Password dimenticata?
+                </Link>
+              </div>
               <input
                 id="password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                aria-describedby={hasError ? "login-error" : undefined}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                 placeholder="••••••••"
+                autoComplete="current-password"
               />
             </div>
 
             {error && (
-              <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>
+              <div
+                id="login-error"
+                role="alert"
+                aria-live="assertive"
+                className="rounded-xl bg-red-50 p-3 text-sm text-red-700"
+              >
+                {error}
+              </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+              className="w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2"
             >
               {loading ? "Accesso in corso..." : "Accedi"}
             </button>
