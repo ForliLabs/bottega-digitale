@@ -1,7 +1,11 @@
 import { getAuthContext } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/api-response";
 import { createCheckoutSession, isStripeConfigured, type TierKey } from "@/lib/stripe";
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) return csrfError;
+
   const auth = await getAuthContext();
   if (!auth) {
     return Response.json({ error: "Non autenticato." }, { status: 401 });

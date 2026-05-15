@@ -1,80 +1,106 @@
 import { prisma } from "@/lib/prisma";
+import { requireBusinessContext } from "@/lib/auth";
+import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 
-// Loyalty check-in API: scan QR code at counter
+// Loyalty check-in API: scan QR code at counter (staff/business-owned action)
 
 export async function POST(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   try {
-    const { businessId, customerId, customerPhone } = await request.json();
-
-    if (!businessId) {
-      return Response.json({ error: "businessId richiesto." }, { status: 400 });
+    const business = await requireBusinessContext();
+    if (!business) {
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
     }
 
-    const business = await prisma.business.findUnique({ where: { id: businessId } });
-    if (!business || !business.loyaltyEnabled) {
-      return Response.json({ error: "Programma fedeltà non attivo." }, { status: 404 });
+    if (!business.loyaltyEnabled) {
+      return apiError("Programma fedeltà non attivo.", 404, "loyalty_disabled");
     }
 
-    // Find customer by ID or phone
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return apiError("Corpo richiesta non valido.", 400, "invalid_body");
+    }
+
+    const { customerId, customerPhone } = body as Record<string, unknown>;
+
+    // Validate that at least one identifier is provided and is a string
+    if (!customerId && !customerPhone) {
+      return apiError("customerId o customerPhone richiesto.", 400, "missing_identifier");
+    }
+    if (customerId && typeof customerId !== "string") {
+      return apiError("customerId deve essere una stringa.", 400, "invalid_input");
+    }
+    if (customerPhone && typeof customerPhone !== "string") {
+      return apiError("customerPhone deve essere una stringa.", 400, "invalid_input");
+    }
+
+    // Find customer scoped to the authenticated business
     const customer = customerId
-      ? await prisma.customer.findFirst({ where: { id: customerId, businessId } })
+      ? await prisma.customer.findFirst({ where: { id: customerId, businessId: business.id } })
       : customerPhone
-        ? await prisma.customer.findFirst({ where: { phone: customerPhone, businessId } })
+        ? await prisma.customer.findFirst({ where: { phone: customerPhone, businessId: business.id } })
         : null;
 
     if (!customer) {
-      return Response.json({ error: "Cliente non trovato." }, { status: 404 });
+      return apiError("Cliente non trovato.", 404, "customer_not_found");
     }
 
-    // Add loyalty points
     const pointsToAdd = business.loyaltyPointsPerVisit;
 
-    // Update or create loyalty card
-    let card = await prisma.loyaltyCard.findUnique({
-      where: { businessId_customerId: { businessId, customerId: customer.id } },
-    });
+    // Update or create loyalty card + update customer in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      let card = await tx.loyaltyCard.findUnique({
+        where: { businessId_customerId: { businessId: business.id, customerId: customer.id } },
+      });
 
-    if (card) {
-      card = await prisma.loyaltyCard.update({
-        where: { id: card.id },
+      if (card) {
+        card = await tx.loyaltyCard.update({
+          where: { id: card.id },
+          data: {
+            points: { increment: pointsToAdd },
+            totalEarned: { increment: pointsToAdd },
+          },
+        });
+      } else {
+        card = await tx.loyaltyCard.create({
+          data: {
+            businessId: business.id,
+            customerId: customer.id,
+            points: pointsToAdd,
+            totalEarned: pointsToAdd,
+          },
+        });
+      }
+
+      await tx.customer.update({
+        where: { id: customer.id },
         data: {
-          points: { increment: pointsToAdd },
-          totalEarned: { increment: pointsToAdd },
+          loyaltyPoints: { increment: pointsToAdd },
+          totalVisits: { increment: 1 },
+          lastVisit: new Date(),
         },
       });
-    } else {
-      card = await prisma.loyaltyCard.create({
-        data: {
-          businessId,
-          customerId: customer.id,
-          points: pointsToAdd,
-          totalEarned: pointsToAdd,
-        },
-      });
-    }
 
-    // Update customer record
-    await prisma.customer.update({
-      where: { id: customer.id },
-      data: {
-        loyaltyPoints: { increment: pointsToAdd },
-        totalVisits: { increment: 1 },
-        lastVisit: new Date(),
-      },
+      return card;
     });
 
-    // Check if reward threshold reached
-    const rewardAvailable = card.points >= business.loyaltyRewardThreshold;
+    const rewardAvailable = result.points >= business.loyaltyRewardThreshold;
 
-    return Response.json({
-      points: card.points,
-      totalEarned: card.totalEarned,
+    return apiJson({
+      points: result.points,
+      totalEarned: result.totalEarned,
       pointsAdded: pointsToAdd,
       threshold: business.loyaltyRewardThreshold,
       rewardName: business.loyaltyRewardName,
       rewardAvailable,
     });
   } catch {
-    return Response.json({ error: "Errore check-in fedeltà." }, { status: 500 });
+    return apiError("Errore check-in fedeltà.", 500, "checkin_failed");
   }
 }

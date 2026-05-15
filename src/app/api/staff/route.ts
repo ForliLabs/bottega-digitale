@@ -92,6 +92,18 @@ export async function POST(request: Request) {
   }
 }
 
+// Fields that can be updated via the PATCH endpoint
+const STAFF_UPDATABLE_FIELDS = new Set([
+  "name",
+  "email",
+  "phone",
+  "role",
+  "color",
+  "workingHours",
+  "serviceIds",
+  "active",
+]);
+
 export async function PATCH(request: Request) {
   const csrfError = ensureSameOrigin(request);
   if (csrfError) {
@@ -105,13 +117,33 @@ export async function PATCH(request: Request) {
     }
 
     const payload = await request.json();
-    const { id, ...updates } = payload;
+    const { id, ...rawUpdates } = payload;
+
+    if (!id || typeof id !== "string") {
+      return apiError("ID collaboratore richiesto", 400, "missing_id");
+    }
+
+    // Only allow known fields through
+    const updates: Record<string, unknown> = {};
+    for (const key of Object.keys(rawUpdates)) {
+      if (STAFF_UPDATABLE_FIELDS.has(key)) {
+        updates[key] = rawUpdates[key];
+      }
+    }
 
     if (updates.workingHours && typeof updates.workingHours !== "string") {
       updates.workingHours = JSON.stringify(updates.workingHours);
     }
     if (updates.serviceIds && typeof updates.serviceIds !== "string") {
       updates.serviceIds = JSON.stringify(updates.serviceIds);
+    }
+
+    // Validate role if provided
+    if (updates.role !== undefined) {
+      const validRoles = ["owner", "manager", "staff"];
+      if (!validRoles.includes(updates.role as string)) {
+        return apiError("Ruolo non valido", 400, "invalid_role");
+      }
     }
 
     const updated = await prisma.staffProfile.updateMany({
