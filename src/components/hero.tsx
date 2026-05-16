@@ -50,7 +50,7 @@ export function Hero({
               {secondaryLabel && secondaryHref && (
                 <a
                   href={secondaryHref}
-                  className="rounded-xl border border-gray-300 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+                  className="rounded-xl border border-gray-300 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
                 >
                   {secondaryLabel}
                 </a>

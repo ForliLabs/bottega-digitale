@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -21,11 +21,21 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const mobileMenuId = "mobile-navigation";
+  // Ref to the hamburger button so we can restore focus when the menu closes
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  function closeMenu() {
+    setOpen(false);
+    // Return focus to the toggle button so keyboard/AT users don't lose their place
+    window.requestAnimationFrame(() => {
+      toggleRef.current?.focus();
+    });
+  }
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="text-xl font-bold text-gray-900">
+        <Link href="/" aria-label={`${brand} – torna alla home`} className="text-xl font-bold text-gray-900">
           {brand}
         </Link>
 
@@ -59,8 +69,9 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
 
         {/* Mobile toggle */}
         <button
+          ref={toggleRef}
           className="rounded-lg p-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-300 md:hidden"
-          onClick={() => setOpen(!open)}
+          onClick={() => (open ? closeMenu() : setOpen(true))}
           aria-label={open ? "Chiudi menu" : "Apri menu"}
           aria-expanded={open}
           aria-controls={mobileMenuId}
@@ -89,7 +100,7 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
                   "block rounded-md px-3 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2",
                   isActive ? "bg-amber-50 text-amber-700" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
                 )}
-                onClick={() => setOpen(false)}
+                onClick={closeMenu}
                 aria-current={isActive ? "page" : undefined}
               >
                 {item.label}
@@ -100,7 +111,7 @@ export function Navbar({ brand, items, ctaLabel, ctaHref }: NavbarProps) {
             <Link
               href={ctaHref}
               className="mt-2 block rounded-lg bg-blue-600 px-3 py-2 text-center text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
             >
               {ctaLabel}
             </Link>

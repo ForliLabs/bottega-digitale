@@ -17,7 +17,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 function renderStars(rating: number) {
-  return `${"★".repeat(Math.round(rating))}${"☆".repeat(5 - Math.round(rating))}`;
+  const rounded = Math.round(rating);
+  return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
+}
+
+function AccessibleStars({ rating, label }: { rating: number; label?: string }) {
+  const ariaLabel = label ?? `Valutazione: ${rating.toFixed(1)} su 5`;
+  return (
+    <span aria-label={ariaLabel}>
+      <span aria-hidden="true" className="text-amber-500">{renderStars(rating)}</span>
+    </span>
+  );
 }
 
 export default async function PublishedWebsitePage({ params }: PageProps) {
@@ -147,7 +157,9 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
                   <p className="font-medium text-slate-900">{service.name}</p>
                   <p className="text-sm text-slate-500">{service.durationMinutes} min</p>
                 </div>
-                <span className="text-lg font-bold text-slate-900">€{service.priceEuro}</span>
+                <span className="text-lg font-bold text-slate-900">
+                  €{service.priceEuro.toLocaleString("it-IT", { minimumFractionDigits: 0 })}
+                </span>
               </div>
             ))}
           </div>
@@ -181,14 +193,21 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
         <section className="mx-auto max-w-4xl px-4 py-12">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold text-slate-900">Recensioni</h2>
-            <span className="text-lg text-amber-500">{renderStars(avgRating)} {avgRating.toFixed(1)}</span>
+            <AccessibleStars
+              rating={avgRating}
+              label={`Media recensioni: ${avgRating.toFixed(1)} su 5`}
+            />
+            <span className="text-lg text-slate-700" aria-hidden="true">{avgRating.toFixed(1)}</span>
           </div>
           <div className="mt-6 space-y-4">
             {business.reviews.map((review) => (
               <div key={review.id} className="rounded-2xl border border-slate-200 bg-white p-5">
                 <div className="flex items-center justify-between">
                   <p className="font-medium text-slate-900">{review.author}</p>
-                  <span className="text-amber-500">{renderStars(review.rating)}</span>
+                  <AccessibleStars
+                    rating={review.rating}
+                    label={`Valutazione di ${review.author}: ${review.rating} su 5`}
+                  />
                 </div>
                 <p className="mt-2 text-sm text-slate-600">&ldquo;{review.comment}&rdquo;</p>
               </div>

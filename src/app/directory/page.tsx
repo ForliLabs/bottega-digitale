@@ -75,15 +75,16 @@ export default async function DirectoryPage({ searchParams }: DirectoryPageProps
             className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm"
             placeholder="Cerca per nome, categoria o descrizione"
           />
-          <button className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">
+          <button type="submit" className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">
             Cerca
           </button>
           {selectedCategory ? <input type="hidden" name="category" value={selectedCategory} /> : null}
         </form>
         {categories.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <nav aria-label="Filtra per categoria" className="mt-4 flex flex-wrap gap-2">
             <Link
               href={query ? `/directory?q=${encodeURIComponent(query)}` : "/directory"}
+              aria-current={!selectedCategory ? "page" : undefined}
               className={`rounded-full px-4 py-2 text-sm font-medium ${!selectedCategory ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}
             >
               Tutte
@@ -92,12 +93,13 @@ export default async function DirectoryPage({ searchParams }: DirectoryPageProps
               <Link
                 key={cat}
                 href={`/directory?category=${encodeURIComponent(cat)}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                aria-current={selectedCategory === cat ? "page" : undefined}
                 className={`rounded-full px-4 py-2 text-sm font-medium ${selectedCategory === cat ? "bg-amber-500 text-white" : "bg-amber-100 text-amber-800"}`}
               >
                 {cat}
               </Link>
             ))}
-          </div>
+          </nav>
         )}
       </section>
 

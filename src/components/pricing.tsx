@@ -36,10 +36,17 @@ export function PricingSection({ title, subtitle, tiers }: PricingSectionProps) 
               className={cn(
                 "flex flex-col rounded-2xl border bg-white p-8 shadow-sm",
                 tier.highlighted
-                  ? "border-blue-600 ring-2 ring-blue-600"
+                  ? "border-amber-500 ring-2 ring-amber-500"
                   : "border-gray-200"
               )}
             >
+              {tier.highlighted && (
+                <div className="mb-3 -mt-2">
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                    ✦ Piano consigliato
+                  </span>
+                </div>
+              )}
               <h3 className="text-lg font-semibold text-gray-900">{tier.name}</h3>
               <p className="mt-2 text-sm text-gray-500">{tier.description}</p>
               <div className="mt-6">
@@ -51,7 +58,13 @@ export function PricingSection({ title, subtitle, tiers }: PricingSectionProps) 
               <ul className="mt-8 flex-1 space-y-3">
                 {tier.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-3 text-sm text-gray-600">
-                    <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg
+                      className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     {feature}
@@ -61,10 +74,10 @@ export function PricingSection({ title, subtitle, tiers }: PricingSectionProps) 
               <a
                 href={tier.ctaHref}
                 className={cn(
-                  "mt-8 block rounded-lg px-4 py-3 text-center text-sm font-semibold",
+                  "mt-8 block rounded-lg px-4 py-3 text-center text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2",
                   tier.highlighted
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    ? "bg-amber-500 text-white hover:bg-amber-600 focus-visible:outline-amber-500"
+                    : "border border-gray-300 text-gray-700 hover:bg-gray-50 focus-visible:outline-gray-500"
                 )}
               >
                 {tier.ctaLabel}

@@ -54,7 +54,7 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
           throw new Error(data.error || "Aggiornamento coda non disponibile");
         }
         setStatus(data);
-        setPollStatus(data.entry?.status === "called" ? "È il tuo turno" : "Ultimo aggiornamento ricevuto");
+        setPollStatus(data.entry?.status === "called" ? "" : "Ultimo aggiornamento ricevuto");
       } catch {
         setPollStatus("Connessione persa, nuovo tentativo tra pochi secondi...");
       }
@@ -175,26 +175,31 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
           ) : !entryId ? (
             <form onSubmit={joinQueue} className="mt-8 space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Nome *</label>
+                <label htmlFor="queue-name" className="mb-1 block text-sm font-medium text-slate-700">Nome *</label>
                 <input
+                  id="queue-name"
                   required
                   minLength={2}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
                   placeholder="Il tuo nome"
+                  autoComplete="given-name"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
+                <label htmlFor="queue-phone" className="mb-1 block text-sm font-medium text-slate-700">
                   Telefono (per notifica WhatsApp)
                 </label>
                 <input
+                  id="queue-phone"
+                  type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
                   placeholder="+39 333 1234567"
                   inputMode="tel"
+                  autoComplete="tel"
                 />
               </div>
               {error ? (
@@ -231,10 +236,17 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
               </div>
               <div className="text-center text-sm text-slate-500">
                 <p>Totale in coda: {status?.totalWaiting || 0} persone</p>
-                <p className="mt-2 text-xs text-slate-400">{pollStatus}</p>
+                {/* Live region for polling status updates */}
+                <p aria-live="polite" aria-atomic="true" className="mt-2 text-xs text-slate-400">{pollStatus}</p>
                 {status?.entry?.status === "called" && (
-                  <div className="mt-4 rounded-2xl bg-emerald-50 p-4">
-                    <p className="text-lg font-bold text-emerald-700">🔔 È il tuo turno!</p>
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="mt-4 rounded-2xl bg-emerald-50 p-4"
+                  >
+                    <p className="text-lg font-bold text-emerald-700">
+                      <span aria-hidden="true">🔔 </span>È il tuo turno!
+                    </p>
                     <p className="text-sm text-emerald-600">Presentati al banco.</p>
                   </div>
                 )}

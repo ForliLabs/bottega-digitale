@@ -28,6 +28,13 @@ interface Service {
 
 type BookingStep = "service" | "date" | "time" | "details" | "confirmed";
 
+const STEP_LABELS: Record<Exclude<BookingStep, "confirmed">, string> = {
+  service: "Servizio",
+  date: "Data",
+  time: "Orario",
+  details: "Dati",
+};
+
 export default function BookingPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -198,20 +205,30 @@ export default function BookingPage() {
               const isCompleted = ["service", "date", "time", "details"].indexOf(step) > i || step === "confirmed";
               const isCurrent = step === s;
               return (
-                <li key={s} className="flex items-center gap-2">
-                  <div
-                    aria-current={isCurrent ? "step" : undefined}
-                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                      isCurrent ? "bg-amber-500 text-white" :
-                      isCompleted ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
-                    }`}
-                  >
-                    <span className="sr-only">
-                      {`Passo ${i + 1}: ${s === "service" ? "Servizio" : s === "date" ? "Data" : s === "time" ? "Orario" : "Dati"}${isCurrent ? " (corrente)" : isCompleted ? " (completato)" : ""}`}
+                <li key={s} className="flex items-center gap-1">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div
+                      aria-current={isCurrent ? "step" : undefined}
+                      className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                        isCurrent ? "bg-amber-500 text-white" :
+                        isCompleted ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
+                      }`}
+                    >
+                      <span className="sr-only">
+                        {`Passo ${i + 1}: ${STEP_LABELS[s]}${isCurrent ? " (corrente)" : isCompleted ? " (completato)" : ""}`}
+                      </span>
+                      <span aria-hidden="true">{i + 1}</span>
+                    </div>
+                    <span
+                      aria-hidden="true"
+                      className={`text-[10px] font-medium leading-none ${
+                        isCurrent ? "text-amber-600" : isCompleted ? "text-emerald-600" : "text-slate-400"
+                      }`}
+                    >
+                      {STEP_LABELS[s]}
                     </span>
-                    <span aria-hidden="true">{i + 1}</span>
                   </div>
-                  {i < 3 && <div className="h-0.5 w-6 bg-slate-200" aria-hidden="true" />}
+                  {i < 3 && <div className="mb-3 h-0.5 w-5 bg-slate-200" aria-hidden="true" />}
                 </li>
               );
             })}
@@ -289,7 +306,7 @@ export default function BookingPage() {
               setSelectedDate("");
               setSelectedSlot(null);
               setStep("service");
-            }} className="text-sm text-slate-500 hover:text-slate-700">
+            }} className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
               ← Indietro
             </button>
           </div>
@@ -304,15 +321,22 @@ export default function BookingPage() {
               {new Date(selectedDate + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {availableSlots.map((slot) => (
-                <button
-                  key={slot.start}
-                  onClick={() => handleSlotSelect(slot)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-sm font-medium text-slate-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300"
-                >
-                  {new Date(slot.start).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-                </button>
-              ))}
+              {availableSlots.map((slot) => {
+                const timeLabel = new Date(slot.start).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                const dateLabel = slotsForDate
+                  ? `${slotsForDate.dayName} ${new Date(selectedDate + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "long" })}`
+                  : "";
+                return (
+                  <button
+                    key={slot.start}
+                    onClick={() => handleSlotSelect(slot)}
+                    aria-label={`Prenota ${selectedService?.name ?? ""} alle ${timeLabel} — ${dateLabel}`}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-sm font-medium text-slate-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  >
+                    {timeLabel}
+                  </button>
+                );
+              })}
             </div>
             {availableSlots.length === 0 ? (
               <InlineMessage tone="info" title="Nessun orario disponibile" description="Scegli un altro giorno o torna più tardi: gli slot si aggiornano automaticamente." />
@@ -320,7 +344,7 @@ export default function BookingPage() {
             <button onClick={() => {
               setSelectedSlot(null);
               setStep("date");
-            }} className="text-sm text-slate-500 hover:text-slate-700">
+            }} className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
               ← Indietro
             </button>
           </div>
@@ -396,7 +420,7 @@ export default function BookingPage() {
             <button onClick={() => {
               setError("");
               setStep("time");
-            }} className="text-sm text-slate-500 hover:text-slate-700">
+            }} className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
               ← Indietro
             </button>
           </div>
@@ -405,7 +429,7 @@ export default function BookingPage() {
         {/* Step: Confirmed */}
         {step === "confirmed" && bookingResult && (
           <div className="space-y-4 text-center">
-            <div className="text-5xl">✅</div>
+            <div className="text-5xl" aria-hidden="true">✅</div>
             <h2 className="text-xl font-bold text-slate-900">Prenotazione confermata!</h2>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-left">
               <p><strong>Servizio:</strong> {bookingResult.service}</p>

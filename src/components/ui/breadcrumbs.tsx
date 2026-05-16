@@ -15,7 +15,7 @@ const LABEL_MAP: Record<string, string> = {
   loyalty: "Fedeltà",
   analytics: "Analisi",
   automations: "Automazioni",
-  jobs: "Operaio",
+  jobs: "Attività programmate",
   advisor: "Consigliere AI",
   moonshot: "Moonshot Lab",
   staff: "Team",

@@ -175,14 +175,21 @@ export default function CustomerPortalPage() {
             <h2 className="text-lg font-semibold text-slate-900">Accedi con il telefono</h2>
             <p className="mt-1 text-sm text-slate-500">Riceverai un codice di verifica via WhatsApp.</p>
             {sessionMessage ? <div className="mt-4"><InlineMessage tone="info" title={sessionMessage} /></div> : null}
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              placeholder="+39 333 1234567"
-              inputMode="tel"
-            />
+            <div className="mt-4">
+              <label htmlFor="portal-phone" className="mb-1 block text-sm font-medium text-slate-700">
+                Numero di telefono
+              </label>
+              <input
+                id="portal-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                placeholder="+39 333 1234567"
+                inputMode="tel"
+                autoComplete="tel"
+              />
+            </div>
             {error ? <div className="mt-3"><InlineMessage tone="error" title={error} /></div> : null}
             <button
               onClick={handleRequestOTP}
@@ -207,6 +214,7 @@ export default function CustomerPortalPage() {
               placeholder="123456"
               inputMode="numeric"
               maxLength={6}
+              autoComplete="one-time-code"
             />
             {error ? <div className="mt-3"><InlineMessage tone="error" title={error} /></div> : null}
             <button
@@ -223,7 +231,7 @@ export default function CustomerPortalPage() {
             >
               {resendCountdown > 0 ? `Invia di nuovo tra ${resendCountdown}s` : "Invia di nuovo il codice"}
             </button>
-            <button onClick={() => setView("login")} className="mt-2 w-full text-sm text-slate-500">
+            <button onClick={() => setView("login")} className="mt-2 w-full rounded-lg px-3 py-2 text-sm text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1">
               ← Cambia numero
             </button>
           </div>
@@ -258,18 +266,25 @@ export default function CustomerPortalPage() {
             {/* Loyalty */}
             {loyaltyCards.length > 0 && (
               <div className="space-y-3">
-                <h3 className="font-semibold text-slate-900">🏷️ Carta Fedeltà</h3>
+                <h3 className="font-semibold text-slate-900"><span aria-hidden="true">🏷️ </span>Carta Fedeltà</h3>
                 {loyaltyCards.map((card) => {
                   const pct = Math.min((card.points / card.business.loyaltyRewardThreshold) * 100, 100);
                   return (
                     <div key={card.id} className="rounded-xl border border-slate-200 bg-white p-4">
                       <p className="text-sm font-medium text-slate-900">{card.business.name}</p>
-                      <div className="mt-2 h-3 rounded-full bg-slate-100">
-                        <div className="h-3 rounded-full bg-amber-400 transition-all" style={{ width: `${pct}%` }} />
+                      <div
+                        role="progressbar"
+                        aria-valuenow={card.points}
+                        aria-valuemin={0}
+                        aria-valuemax={card.business.loyaltyRewardThreshold}
+                        aria-label={`Punti fedeltà ${card.business.name}: ${card.points} di ${card.business.loyaltyRewardThreshold}`}
+                        className="mt-2 h-3 rounded-full bg-slate-100"
+                      >
+                        <div className="h-3 rounded-full bg-amber-400 transition-all" style={{ width: `${pct}%` }} aria-hidden="true" />
                       </div>
                       <p className="mt-1 text-xs text-slate-500">
                         {card.points}/{card.business.loyaltyRewardThreshold} punti
-                        {pct >= 100 && ` — 🎁 ${card.business.loyaltyRewardName}!`}
+                        {pct >= 100 && <> — <span aria-hidden="true">🎁 </span>{card.business.loyaltyRewardName}!</>}
                       </p>
                     </div>
                   );

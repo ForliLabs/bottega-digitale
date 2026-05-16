@@ -17,13 +17,13 @@ export function Footer({ brand, tagline }: FooterProps) {
             )}
           </div>
           <div className="mt-4 flex gap-6 md:mt-0">
-            <Link href="/privacy" className="text-sm text-gray-500 hover:text-gray-700">
+            <Link href="/privacy" className="rounded text-sm text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1">
               Privacy
             </Link>
-            <Link href="/terms" className="text-sm text-gray-500 hover:text-gray-700">
+            <Link href="/terms" className="rounded text-sm text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1">
               Termini
             </Link>
-            <Link href="/contact" className="text-sm text-gray-500 hover:text-gray-700">
+            <Link href="/contact" className="rounded text-sm text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1">
               Contatti
             </Link>
           </div>
