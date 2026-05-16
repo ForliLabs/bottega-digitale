@@ -131,7 +131,31 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
       <div className="w-full max-w-md">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-center">
-            <span className="text-4xl">🎟️</span>
+            <span className="text-4xl" aria-hidden="true">🎟️</span>
+            {/* Accessible loading/resolution live region */}
+            <p
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only"
+            >
+              {businessLoading
+                ? "Caricamento coda in corso..."
+                : businessName
+                  ? `Coda caricata: ${businessName}`
+                  : ""}
+            </p>
+            {/* Dedicated assertive live region for action errors (join, leave,
+                poll failures). Always mounted so content changes are reliably
+                picked up by screen readers regardless of when they occur. */}
+            <p
+              role="alert"
+              aria-live="assertive"
+              aria-atomic="true"
+              className="sr-only"
+            >
+              {error}
+            </p>
             {businessLoading ? (
               <div className="mt-3 space-y-2">
                 <Skeleton className="mx-auto h-8 w-48" />
@@ -147,7 +171,7 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
 
           {!entryId && !businessLoading && error && !businessName ? (
             <div className="mt-8 space-y-4 text-center">
-              <InlineMessage tone="error" title={error} />
+              <InlineMessage tone="error" title={error} silent />
               <p className="text-xs text-slate-500">
                 Potrebbe essere un problema temporaneo. Controlla la connessione e riprova.
               </p>
@@ -204,7 +228,7 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
               </div>
               {error ? (
                 <div className="space-y-3">
-                  <InlineMessage tone="error" title={error} />
+                  <InlineMessage tone="error" title={error} silent />
                   <p className="text-xs text-slate-500">
                     Potrebbe essere un problema temporaneo di connessione. Controlla la rete e riprova.
                   </p>

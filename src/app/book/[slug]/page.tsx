@@ -35,6 +35,9 @@ const STEP_LABELS: Record<Exclude<BookingStep, "confirmed">, string> = {
   details: "Dati",
 };
 
+// Static metadata — defined at module level to avoid recreation on every render.
+const STEP_ORDER: Exclude<BookingStep, "confirmed">[] = ["service", "date", "time", "details"];
+
 export default function BookingPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -120,6 +123,20 @@ export default function BookingPage() {
     setStep("details");
   };
 
+  const goToStep = (target: Exclude<BookingStep, "confirmed">) => {
+    const currentIdx = STEP_ORDER.indexOf(step as Exclude<BookingStep, "confirmed">);
+    const targetIdx = STEP_ORDER.indexOf(target);
+    if (targetIdx >= currentIdx) return; // only allow backward navigation
+    setError("");
+    if (targetIdx === 0) {
+      setSelectedDate("");
+      setSelectedSlot(null);
+    } else if (targetIdx === 1) {
+      setSelectedSlot(null);
+    }
+    setStep(target);
+  };
+
   const handleSubmit = async () => {
     if (!selectedService) {
       setError("Seleziona un servizio prima di continuare.");
@@ -201,24 +218,38 @@ export default function BookingPage() {
         {/* Progress indicator */}
         <nav aria-label="Passi della prenotazione" className="mb-8">
           <ol className="flex items-center justify-center gap-2">
-            {(["service", "date", "time", "details"] as const).map((s, i) => {
-              const isCompleted = ["service", "date", "time", "details"].indexOf(step) > i || step === "confirmed";
+            {(STEP_ORDER).map((s, i) => {
+              const isCompleted = STEP_ORDER.indexOf(step as Exclude<BookingStep, "confirmed">) > i || step === "confirmed";
               const isCurrent = step === s;
+              const canClick = isCompleted && step !== "confirmed";
+              // Compute a human-readable state string for screen-reader consumers.
+              const stepState = isCurrent ? " (corrente)" : isCompleted ? " (completato)" : " (non ancora raggiunto)";
               return (
                 <li key={s} className="flex items-center gap-1">
                   <div className="flex flex-col items-center gap-0.5">
-                    <div
-                      aria-current={isCurrent ? "step" : undefined}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                        isCurrent ? "bg-amber-500 text-white" :
-                        isCompleted ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
-                      }`}
-                    >
-                      <span className="sr-only">
-                        {`Passo ${i + 1}: ${STEP_LABELS[s]}${isCurrent ? " (corrente)" : isCompleted ? " (completato)" : ""}`}
-                      </span>
-                      <span aria-hidden="true">{i + 1}</span>
-                    </div>
+                    {canClick ? (
+                      <button
+                        type="button"
+                        onClick={() => goToStep(s)}
+                        aria-label={`Torna al passo ${i + 1}: ${STEP_LABELS[s]} (completato)`}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-sm font-medium text-white transition hover:bg-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1"
+                      >
+                        <span aria-hidden="true">{i + 1}</span>
+                      </button>
+                    ) : (
+                      <div
+                        aria-current={isCurrent ? "step" : undefined}
+                        className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                          isCurrent ? "bg-amber-500 text-white" :
+                          isCompleted ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
+                        }`}
+                      >
+                        <span className="sr-only">
+                          {`Passo ${i + 1}: ${STEP_LABELS[s]}${stepState}`}
+                        </span>
+                        <span aria-hidden="true">{i + 1}</span>
+                      </div>
+                    )}
                     <span
                       aria-hidden="true"
                       className={`text-[10px] font-medium leading-none ${
@@ -377,6 +408,7 @@ export default function BookingPage() {
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 placeholder="Il tuo nome"
                 required
+                autoComplete="name"
               />
             </div>
 
@@ -390,6 +422,7 @@ export default function BookingPage() {
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 placeholder="+39 333 1234567"
                 inputMode="tel"
+                autoComplete="tel"
               />
             </div>
 

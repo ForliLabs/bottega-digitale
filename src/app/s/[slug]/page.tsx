@@ -93,50 +93,50 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a
               href={`tel:${business.phone}`}
-              className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+              className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
             >
-              📞 Chiama ora
+              <span aria-hidden="true">📞 </span>Chiama ora
             </a>
             <a
               href={`https://wa.me/${business.phone.replace(/\s+/g, "").replace("+", "")}`}
-              className="rounded-xl border border-emerald-600 px-6 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+              className="rounded-xl border border-emerald-600 px-6 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
             >
-              💬 WhatsApp
+              <span aria-hidden="true">💬 </span>WhatsApp
             </a>
             {business.onlineBookingEnabled ? (
               <Link
                 href={`/book/${business.slug}`}
-                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
               >
-                📅 Prenota online
+                <span aria-hidden="true">📅 </span>Prenota online
               </Link>
             ) : business.catalogEnabled ? (
               <Link
                 href={`/shop/${business.slug}`}
-                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
               >
-                🛍️ Apri la vetrina
+                <span aria-hidden="true">🛍️ </span>Apri la vetrina
               </Link>
             ) : business.phone ? (
               <a
                 href={`tel:${business.phone}`}
-                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
               >
-                ✉️ Contatta il negozio
+                <span aria-hidden="true">✉️ </span>Contatta il negozio
               </a>
             ) : business.email ? (
               <a
                 href={`mailto:${business.email}`}
-                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
               >
-                ✉️ Scrivi al negozio
+                <span aria-hidden="true">✉️ </span>Scrivi al negozio
               </a>
             ) : (
               <Link
                 href="/contact"
-                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
               >
-                ✉️ Richiedi informazioni
+                <span aria-hidden="true">✉️ </span>Richiedi informazioni
               </Link>
             )}
           </div>
@@ -170,14 +170,14 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
       <section className="bg-slate-50 px-4 py-12">
         <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-2">
           <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900">📍 Dove siamo</h2>
+            <h2 className="text-lg font-bold text-slate-900"><span aria-hidden="true">📍 </span>Dove siamo</h2>
             <p className="mt-3 text-sm text-slate-600">{business.address}</p>
             <p className="mt-1 text-sm text-slate-600">{business.phone}</p>
             <p className="mt-1 text-sm text-slate-600">{business.email}</p>
           </div>
           {openingHours.length > 0 && (
             <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900">🕐 Orari</h2>
+              <h2 className="text-lg font-bold text-slate-900"><span aria-hidden="true">🕐 </span>Orari</h2>
               <ul className="mt-3 space-y-2 text-sm text-slate-600">
                 {openingHours.map((hour) => (
                   <li key={hour}>{hour}</li>
@@ -226,7 +226,7 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
           <div className="mt-6 flex justify-center gap-4">
             <Link
               href="/directory"
-              className="text-sm text-slate-400 hover:text-white"
+              className="text-sm text-slate-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded"
             >
               Scopri altre attività a {business.city} →
             </Link>

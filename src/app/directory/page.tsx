@@ -72,10 +72,10 @@ export default async function DirectoryPage({ searchParams }: DirectoryPageProps
             id="directory-search"
             name="q"
             defaultValue={query}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+            className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus-visible:ring-offset-2"
             placeholder="Cerca per nome, categoria o descrizione"
           />
-          <button type="submit" className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">
+          <button type="submit" className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
             Cerca
           </button>
           {selectedCategory ? <input type="hidden" name="category" value={selectedCategory} /> : null}
