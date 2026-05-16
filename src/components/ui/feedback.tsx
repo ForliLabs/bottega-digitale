@@ -49,10 +49,17 @@ export function InlineMessage({
   tone = "info",
   title,
   description,
+  silent = false,
 }: {
   tone?: "info" | "error" | "success";
   title: string;
   description?: string;
+  /**
+   * When true, suppresses the implicit ARIA role so the element is purely
+   * visual. Use this when a parent component already owns an always-mounted
+   * live region that announces the same message (avoids double-announcement).
+   */
+  silent?: boolean;
 }) {
   const toneStyles = {
     info: "border-sky-200 bg-sky-50 text-sky-900",
@@ -60,8 +67,13 @@ export function InlineMessage({
     success: "border-emerald-200 bg-emerald-50 text-emerald-900",
   } as const;
 
+  const implicitRole = tone === "error" ? "alert" : "status";
+
   return (
-    <div className={cn("rounded-2xl border px-4 py-3 text-sm", toneStyles[tone])} role={tone === "error" ? "alert" : "status"}>
+    <div
+      className={cn("rounded-2xl border px-4 py-3 text-sm", toneStyles[tone])}
+      role={silent ? undefined : implicitRole}
+    >
       <p className="font-semibold">{title}</p>
       {description ? <p className="mt-1 opacity-80">{description}</p> : null}
     </div>
