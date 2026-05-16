@@ -103,7 +103,10 @@ export function LoyaltyDashboardClient({
         </p>
       </section>
 
-      {error ? <InlineMessage tone="error" title={error} /> : null}
+      {/* Always-mounted assertive live region — single, reliable SR error announcement */}
+      <p role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">{error}</p>
+      {/* silent: parent live-region above already announces; this is visual only */}
+      {error ? <InlineMessage tone="error" title={error} silent /> : null}
 
       <section className="grid gap-4 md:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -130,21 +133,21 @@ export function LoyaltyDashboardClient({
             <h2 className="text-lg font-semibold text-slate-900">Impostazioni loyalty</h2>
             <p className="mt-1 text-sm text-slate-500">Aggiorna i parametri del programma senza passaggi manuali.</p>
           </div>
-          <label className="flex items-center gap-3 rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
-            <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="h-4 w-4" />
+          <label htmlFor="loyalty-enabled" className="flex items-center gap-3 rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
+            <input id="loyalty-enabled" type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="h-4 w-4" />
             {enabled ? "Programma attivo" : "Programma disattivato"}
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="loyalty-points-per-visit" className="block text-sm font-medium text-slate-700">
             Punti per visita
-            <input type="number" min="1" step="1" value={pointsPerVisit} onChange={(event) => setPointsPerVisit(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+            <input id="loyalty-points-per-visit" type="number" min="1" step="1" value={pointsPerVisit} onChange={(event) => setPointsPerVisit(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="loyalty-reward-threshold" className="block text-sm font-medium text-slate-700">
             Soglia premio
-            <input type="number" min="1" step="1" value={rewardThreshold} onChange={(event) => setRewardThreshold(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+            <input id="loyalty-reward-threshold" type="number" min="1" step="1" value={rewardThreshold} onChange={(event) => setRewardThreshold(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="loyalty-reward-name" className="block text-sm font-medium text-slate-700">
             Nome premio
-            <input value={rewardName} onChange={(event) => setRewardName(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" placeholder="Servizio gratuito" />
+            <input id="loyalty-reward-name" value={rewardName} onChange={(event) => setRewardName(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" placeholder="Servizio gratuito" />
           </label>
           <button type="button" onClick={saveSettings} disabled={loading || !rewardName.trim()} className="rounded-xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold text-white hover:bg-fuchsia-700 disabled:opacity-50">
             {loading ? "Salvataggio..." : "Salva impostazioni"}
@@ -156,9 +159,9 @@ export function LoyaltyDashboardClient({
             <h2 className="text-lg font-semibold text-slate-900">Riscatta un premio</h2>
             <p className="mt-1 text-sm text-slate-500">Seleziona una carta che ha già raggiunto la soglia e registra il premio dal banco.</p>
           </div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="loyalty-redeem-card" className="block text-sm font-medium text-slate-700">
             Carta fedeltà idonea
-            <select value={selectedCardId} onChange={(event) => setSelectedCardId(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+            <select id="loyalty-redeem-card" value={selectedCardId} onChange={(event) => setSelectedCardId(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
               <option value="">Seleziona una carta</option>
               {eligibleCards.map((card) => (
                 <option key={card.id} value={card.id}>{card.customerName} · {card.points} punti</option>

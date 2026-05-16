@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EmptyState, InlineMessage } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
+import { CopyLinkButton } from "@/components/ui/copy-link-button";
 
 interface QueueEntryItem {
   id: string;
@@ -66,7 +67,10 @@ export function QueueDashboardClient({
         </p>
       </section>
 
-      {error ? <InlineMessage tone="error" title={error} /> : null}
+      {/* Always-mounted assertive live region — single, reliable SR error announcement */}
+      <p role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">{error}</p>
+      {/* silent: parent live-region above already announces; this is visual only */}
+      {error ? <InlineMessage tone="error" title={error} silent /> : null}
 
       <section className="grid gap-4 md:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -107,13 +111,13 @@ export function QueueDashboardClient({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {entry.status === "waiting" ? (
-                      <button type="button" onClick={() => updateEntry(entry.id, "called")} disabled={loadingId === entry.id} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50">Chiama</button>
+                      <button type="button" onClick={() => updateEntry(entry.id, "called")} disabled={loadingId === entry.id} aria-label={`Chiama ${entry.customerName}`} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 disabled:opacity-50">Chiama</button>
                     ) : null}
                     {entry.status !== "serving" ? (
-                      <button type="button" onClick={() => updateEntry(entry.id, "serving")} disabled={loadingId === entry.id} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">In servizio</button>
+                      <button type="button" onClick={() => updateEntry(entry.id, "serving")} disabled={loadingId === entry.id} aria-label={`Metti in servizio ${entry.customerName}`} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 disabled:opacity-50">In servizio</button>
                     ) : null}
-                    <button type="button" onClick={() => updateEntry(entry.id, "completed")} disabled={loadingId === entry.id} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Completato</button>
-                    <button type="button" onClick={() => updateEntry(entry.id, "cancelled", true)} disabled={loadingId === entry.id} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50">Rimuovi</button>
+                    <button type="button" onClick={() => updateEntry(entry.id, "completed")} disabled={loadingId === entry.id} aria-label={`Segna completato ${entry.customerName}`} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 disabled:opacity-50">Completato</button>
+                    <button type="button" onClick={() => updateEntry(entry.id, "cancelled", true)} disabled={loadingId === entry.id} aria-label={`Rimuovi ${entry.customerName} dalla coda`} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 disabled:opacity-50">Rimuovi</button>
                   </div>
                 </div>
               ))}
@@ -129,6 +133,12 @@ export function QueueDashboardClient({
             <p className="mt-2 text-sm text-slate-600">Condividi questo link o trasformalo in QR code dal browser per far entrare i clienti in autonomia.</p>
             <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
               {business ? `/queue/${business.id}` : "/queue/demo"}
+            </div>
+            <div className="mt-3">
+              <CopyLinkButton
+                url={business ? `/queue/${business.id}` : "/queue/demo"}
+                aria-label="Copia link pubblico della coda"
+              />
             </div>
           </div>
 

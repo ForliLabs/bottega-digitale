@@ -181,7 +181,8 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-4 lg:grid-cols-3" aria-labelledby="quick-actions-heading">
+        <h2 id="quick-actions-heading" className="sr-only">Azioni rapide</h2>
         {quickActions.map((action) => (
           <Link
             key={action.title}
@@ -191,7 +192,7 @@ export default async function DashboardPage() {
             <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${action.accent}`}>
               Azione rapida
             </span>
-            <h2 className="mt-4 text-lg font-semibold text-slate-900">{action.title}</h2>
+            <h3 className="mt-4 text-lg font-semibold text-slate-900">{action.title}</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">{action.description}</p>
           </Link>
         ))}

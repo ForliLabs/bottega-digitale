@@ -118,7 +118,10 @@ export function WebsiteEditorClient({
         </p>
       </section>
 
-      {error ? <InlineMessage tone="error" title={error} /> : null}
+      {/* Always-mounted assertive live region — single, reliable SR error announcement */}
+      <p role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">{error}</p>
+      {/* silent: parent live-region above already announces; this is visual only */}
+      {error ? <InlineMessage tone="error" title={error} silent /> : null}
 
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.4fr]">
         <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -127,9 +130,10 @@ export function WebsiteEditorClient({
             <p className="mt-1 text-sm text-slate-500">Le modifiche aggiornano direttamente la pagina pubblica.</p>
           </div>
 
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="website-template" className="block text-sm font-medium text-slate-700">
             Template sito
             <select
+              id="website-template"
               value={form.websiteTemplate}
               onChange={(event) => setForm((current) => ({ ...current, websiteTemplate: event.target.value }))}
               className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
@@ -140,9 +144,10 @@ export function WebsiteEditorClient({
             </select>
           </label>
 
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="website-description" className="block text-sm font-medium text-slate-700">
             Testo hero
             <textarea
+              id="website-description"
               value={form.description}
               onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
               rows={4}
@@ -150,27 +155,30 @@ export function WebsiteEditorClient({
             />
           </label>
 
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="website-phone" className="block text-sm font-medium text-slate-700">
             Telefono CTA
             <input
+              id="website-phone"
               value={form.phone}
               onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
               className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
             />
           </label>
 
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="website-email" className="block text-sm font-medium text-slate-700">
             Email contatto
             <input
+              id="website-email"
               value={form.email}
               onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
               className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
             />
           </label>
 
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="website-address" className="block text-sm font-medium text-slate-700">
             Indirizzo
             <input
+              id="website-address"
               value={form.address}
               onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
               className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"

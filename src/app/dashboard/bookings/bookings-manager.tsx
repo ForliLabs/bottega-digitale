@@ -477,13 +477,13 @@ export function BookingsManager({ initialBookings }: { initialBookings: Booking[
                       <div className="flex gap-2">
                         <button
                           onClick={() => openEdit(booking)}
-                          className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          className="min-h-[36px] rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                         >
                           Modifica
                         </button>
                         <button
                           onClick={() => setDeleteTarget(booking.id)}
-                          className="rounded-lg border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                          className="min-h-[36px] rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                         >
                           Elimina
                         </button>

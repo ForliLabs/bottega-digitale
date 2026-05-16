@@ -163,7 +163,10 @@ export function InvoicesClient({
         </p>
       </section>
 
-      {error ? <InlineMessage tone="error" title={error} /> : null}
+      {/* Always-mounted assertive live region — single, reliable SR error announcement */}
+      <p role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">{error}</p>
+      {/* silent: parent live-region above already announces; this is visual only */}
+      {error ? <InlineMessage tone="error" title={error} silent /> : null}
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -188,18 +191,20 @@ export function InvoicesClient({
               ["codiceDestinatario", "Codice destinatario"],
               ["pecDestinatario", "PEC destinatario"],
             ].map(([field, label]) => (
-              <label key={field} className="block text-sm font-medium text-slate-700">
+              <label key={field} htmlFor={`fiscal-${field}`} className="block text-sm font-medium text-slate-700">
                 {label}
                 <input
+                  id={`fiscal-${field}`}
                   value={String(fiscalForm[field as keyof FiscalProfile] || "")}
                   onChange={(event) => setFiscalForm((current) => ({ ...current, [field]: event.target.value }))}
                   className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
                 />
               </label>
             ))}
-            <label className="block text-sm font-medium text-slate-700">
+            <label htmlFor="fiscal-regimeFiscale" className="block text-sm font-medium text-slate-700">
               Regime fiscale
               <select
+                id="fiscal-regimeFiscale"
                 value={fiscalForm.regimeFiscale}
                 onChange={(event) => setFiscalForm((current) => ({ ...current, regimeFiscale: event.target.value }))}
                 className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
@@ -296,6 +301,8 @@ export function InvoicesClient({
                       {STATUS_LABELS[invoice.status] || invoice.status}
                     </span>
                     <select
+                      id={`invoice-status-${invoice.id}`}
+                      aria-label={`Aggiorna stato fattura ${invoice.fiscalYear}-${String(invoice.progressiveNumber).padStart(5, "0")} (${invoice.customerName})`}
                       value={invoice.status}
                       onChange={(event) => updateStatus(invoice.id, event.target.value)}
                       disabled={loadingAction === invoice.id}

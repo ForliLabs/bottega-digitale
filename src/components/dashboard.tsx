@@ -36,6 +36,7 @@ function CollapsibleSection({
   defaultOpen: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const contentId = `sidebar-section-${section.key}`;
 
   if (!section.label) {
     return (
@@ -53,6 +54,7 @@ function CollapsibleSection({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
+        aria-controls={contentId}
         className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-300"
       >
         {section.label}
@@ -67,13 +69,11 @@ function CollapsibleSection({
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && (
-        <div className="mt-1 space-y-1">
-          {section.items.map((item) => (
-            <SidebarLink key={item.href} item={item} pathname={pathname} />
-          ))}
-        </div>
-      )}
+      <div id={contentId} className={cn("mt-1 space-y-1", !open && "hidden")}>
+        {section.items.map((item) => (
+          <SidebarLink key={item.href} item={item} pathname={pathname} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -301,8 +301,9 @@ export function DashboardShell({ brand, sections, extraCommandItems, children }:
               </div>
             </div>
           </div>
-          {/* Quick-access chips for top routes */}
-          <nav className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Scorciatoie dashboard">
+          {/* Quick-access chips for top routes — fade on the right signals horizontal scroll */}
+          <div className="relative mt-3">
+          <nav className="flex gap-2 overflow-x-auto pb-1 pr-6" aria-label="Scorciatoie dashboard">
             {primaryItems.map((item) => {
               const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
               return (
@@ -323,6 +324,9 @@ export function DashboardShell({ brand, sections, extraCommandItems, children }:
               );
             })}
           </nav>
+            {/* subtle right-edge fade to hint at horizontal scroll */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white/90 to-transparent" aria-hidden="true" />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">
@@ -350,6 +354,7 @@ function MobileSidebarSection({
   defaultOpen: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const contentId = `mobile-sidebar-section-${section.key}`;
 
   if (!section.label) {
     return (
@@ -367,6 +372,7 @@ function MobileSidebarSection({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
+        aria-controls={contentId}
         className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-300"
       >
         {section.label}
@@ -381,13 +387,11 @@ function MobileSidebarSection({
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && (
-        <div className="mt-1 space-y-1">
-          {section.items.map((item) => (
-            <SidebarLink key={item.href} item={item} pathname={pathname} onClick={onNavigate} />
-          ))}
-        </div>
-      )}
+      <div id={contentId} className={cn("mt-1 space-y-1", !open && "hidden")}>
+        {section.items.map((item) => (
+          <SidebarLink key={item.href} item={item} pathname={pathname} onClick={onNavigate} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -408,12 +412,18 @@ export function StatCard({ label, value, change, trend }: StatCardProps) {
         {change && (
           <dd
             className={cn(
-              "mt-2 text-sm font-medium",
+              "mt-2 inline-flex items-center gap-1 text-sm font-medium",
               trend === "up" && "text-green-600",
               trend === "down" && "text-red-600",
               trend === "neutral" && "text-gray-500"
             )}
           >
+            {trend === "up" && <span aria-hidden="true">↑</span>}
+            {trend === "down" && <span aria-hidden="true">↓</span>}
+            {trend === "neutral" && <span aria-hidden="true">→</span>}
+            <span className="sr-only">
+              {trend === "up" ? "In aumento: " : trend === "down" ? "In calo: " : "Stabile: "}
+            </span>
             {change}
           </dd>
         )}
