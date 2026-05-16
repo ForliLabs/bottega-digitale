@@ -4,6 +4,7 @@ import {
   getDashboardReviews,
 } from "@/lib/dashboard-data";
 import { calculateAverageRating } from "@/lib/data";
+import { CopyTextButton } from "@/components/ui/copy-text-button";
 
 const dateFormatter = new Intl.DateTimeFormat("it-IT", {
   day: "2-digit",
@@ -59,7 +60,9 @@ export default async function ReviewsPage() {
               <div>
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-semibold text-slate-900">{review.author}</h2>
-                  <span className="text-amber-500">{renderStars(review.rating)}</span>
+                  <span aria-label={`Valutazione: ${review.rating} su 5`}>
+                    <span aria-hidden="true" className="text-amber-500">{renderStars(review.rating)}</span>
+                  </span>
                 </div>
                 <p className="mt-1 text-sm text-slate-500">Pubblicata il {dateFormatter.format(new Date(review.date))}</p>
                 <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-700">“{review.comment}”</p>
@@ -69,9 +72,14 @@ export default async function ReviewsPage() {
               </span>
             </div>
             <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                Risposta suggerita
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
+                  Risposta suggerita
+                </p>
+                {review.responseSuggestion && (
+                  <CopyTextButton text={review.responseSuggestion} />
+                )}
+              </div>
               <p className="mt-2 text-sm leading-6 text-slate-700">{review.responseSuggestion}</p>
             </div>
           </article>

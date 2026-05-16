@@ -26,7 +26,7 @@ export default async function JobsPage() {
     <div className="space-y-8">
       <section className="rounded-3xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-8 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
-          Operaio
+          Attività programmate
         </p>
         <h1 className="mt-2 text-3xl font-bold text-slate-900">
           Attività in Background

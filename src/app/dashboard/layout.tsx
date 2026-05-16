@@ -46,7 +46,7 @@ const sections: SidebarSection[] = [
         icon: <span aria-hidden="true">👥</span>,
       },
       {
-        label: "Operaio",
+        label: "Attività programmate",
         href: "/dashboard/jobs",
         icon: <span aria-hidden="true">⏰</span>,
       },

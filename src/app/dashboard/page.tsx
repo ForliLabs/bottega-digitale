@@ -59,7 +59,7 @@ export default async function DashboardPage() {
           role="status"
           className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
         >
-          <p className="font-semibold">📌 Stai visualizzando dati demo</p>
+          <p className="font-semibold"><span aria-hidden="true">📌 </span>Stai visualizzando dati demo</p>
           <p className="mt-1 opacity-80">
             I dati mostrati sono di esempio. Collega il tuo negozio per vedere dati reali.
           </p>
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              📋 {briefing.greeting} — Riepilogo del giorno
+              <span aria-hidden="true">📋 </span>{briefing.greeting} — Riepilogo del giorno
             </h2>
             <p className="text-sm text-slate-500">{briefing.date}</p>
           </div>
@@ -160,7 +160,9 @@ export default async function DashboardPage() {
                       : "bg-sky-50 text-sky-800"
                 }`}
               >
-                {alert.type === "warning" ? "⚠️" : alert.type === "success" ? "🎉" : "💡"}{" "}
+                <span aria-hidden="true">
+                  {alert.type === "warning" ? "⚠️" : alert.type === "success" ? "🎉" : "💡"}{" "}
+                </span>
                 {alert.message}
               </div>
             ))}
@@ -197,9 +199,17 @@ export default async function DashboardPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-6 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Prenotazioni recenti</h2>
-            <p className="text-sm text-slate-500">Le prossime visite confermate o in attesa.</p>
+          <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Prenotazioni recenti</h2>
+              <p className="text-sm text-slate-500">Le prossime visite confermate o in attesa.</p>
+            </div>
+            <Link
+              href="/dashboard/bookings"
+              className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+            >
+              Vedi tutte →
+            </Link>
           </div>
           <div className="divide-y divide-slate-100">
             {recentBookings.map((booking) => (
