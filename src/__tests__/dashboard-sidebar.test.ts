@@ -27,7 +27,7 @@ const sections: SidebarSection[] = [
       { label: "Prodotti", href: "/dashboard/products" },
       { label: "Coda", href: "/dashboard/queue" },
       { label: "Team", href: "/dashboard/staff" },
-      { label: "Operaio", href: "/dashboard/jobs" },
+      { label: "Attività programmate", href: "/dashboard/jobs" },
     ],
   },
   {
