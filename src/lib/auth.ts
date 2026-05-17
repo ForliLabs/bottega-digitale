@@ -18,6 +18,7 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import type { Business, User } from "@/generated/prisma/client";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual, createHash } from "node:crypto";
+import { cache } from "react";
 
 function scrypt(
   password: string,
@@ -144,8 +145,11 @@ export interface AuthContext {
 /**
  * Resolve the current user and business from the session cookie.
  * Returns `null` if the session is missing, expired, or the user has no business membership.
+ *
+ * Memoised with React `cache()` so repeated calls within the same server render
+ * (across page components, route handlers and data-fetch helpers) hit the DB only once.
  */
-export async function getAuthContext(): Promise<AuthContext | null> {
+export const getAuthContext: () => Promise<AuthContext | null> = cache(async function getAuthContext(): Promise<AuthContext | null> {
   const token = await getSessionToken();
   if (!token) return null;
 
@@ -171,7 +175,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     user: session.user,
     business: membership.business,
   };
-}
+});
 
 /**
  * Get the current business context, falling back to the first seeded business in demo mode.
