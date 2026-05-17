@@ -1,4 +1,4 @@
-import { requireBusinessContext } from "@/lib/auth";
+import { getBusinessContext } from "@/lib/auth";
 import { apiError, apiJson, ensureSameOrigin } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 
@@ -25,16 +25,43 @@ async function rebalanceQueuePositions(businessId: string, avgServiceMinutes: nu
 }
 
 // Public queue API: join queue + check status (no auth required for customers)
+// When called without `businessId`, falls back to the authenticated dashboard view.
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const businessId = url.searchParams.get("businessId");
   const entryId = url.searchParams.get("entryId");
 
+  // ── Authenticated dashboard mode (no businessId query param) ──────────────
   if (!businessId) {
-    return apiError("businessId richiesto.", 400, "business_id_required");
+    const business = await getBusinessContext();
+    if (!business) {
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
+    }
+    const entries = await prisma.queueEntry.findMany({
+      where: { businessId: business.id, status: { in: [...ACTIVE_QUEUE_STATUSES] } },
+      orderBy: { position: "asc" },
+    });
+    const todayCompleted = await prisma.queueEntry.count({
+      where: {
+        businessId: business.id,
+        status: "completed",
+        completedAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+      },
+    });
+    return apiJson({
+      entries: entries.map((e) => ({
+        id: e.id,
+        customerName: e.customerName,
+        customerPhone: e.customerPhone ?? null,
+        position: e.position,
+        status: e.status,
+      })),
+      todayCompleted,
+    });
   }
 
+  // ── Public mode (businessId provided, no auth needed) ────────────────────
   const business = await prisma.business.findUnique({ where: { id: businessId } });
   if (!business || !business.queueEnabled) {
     return apiError("Coda non attiva per questa attività.", 404, "queue_not_enabled");
@@ -135,7 +162,7 @@ export async function PATCH(request: Request) {
     return csrfError;
   }
 
-  const business = await requireBusinessContext();
+  const business = await getBusinessContext();
   if (!business) {
     return apiError("Autenticazione richiesta", 401, "unauthorized");
   }
@@ -171,7 +198,7 @@ export async function DELETE(request: Request) {
     return csrfError;
   }
 
-  const business = await requireBusinessContext();
+  const business = await getBusinessContext();
   if (!business) {
     return apiError("Autenticazione richiesta", 401, "unauthorized");
   }

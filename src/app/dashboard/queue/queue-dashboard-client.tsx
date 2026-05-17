@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState, InlineMessage } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
+
+const POLL_INTERVAL_MS = 20_000;
 
 interface QueueEntryItem {
   id: string;
@@ -16,7 +18,7 @@ interface QueueEntryItem {
 export function QueueDashboardClient({
   business,
   initialEntries,
-  todayCompleted,
+  todayCompleted: initialTodayCompleted,
 }: {
   business: { id: string; avgServiceMinutes: number } | null;
   initialEntries: QueueEntryItem[];
@@ -24,8 +26,44 @@ export function QueueDashboardClient({
 }) {
   const { notify } = useToast();
   const [entries, setEntries] = useState(initialEntries);
+  const [todayCompleted, setTodayCompleted] = useState(initialTodayCompleted);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  // Polite live-region message for new arrivals
+  const [newArrivalAnnouncement, setNewArrivalAnnouncement] = useState("");
+  const knownIdsRef = useRef(new Set(initialEntries.map((e) => e.id)));
+
+  const refreshQueue = useCallback(async () => {
+    try {
+      const res = await fetch("/api/queue", { credentials: "same-origin" });
+      if (!res.ok) return; // silently ignore transient errors during background poll
+      const data = await res.json() as { entries: QueueEntryItem[]; todayCompleted: number };
+      setLastRefreshed(new Date());
+      const incoming = data.entries ?? [];
+      const newEntries = incoming.filter((e) => !knownIdsRef.current.has(e.id));
+      if (newEntries.length > 0) {
+        setNewArrivalAnnouncement(
+          newEntries.length === 1
+            ? `Nuovo cliente in coda: ${newEntries[0].customerName}`
+            : `${newEntries.length} nuovi clienti in coda`
+        );
+        // Clear the announcement after the SR has a chance to read it
+        window.setTimeout(() => setNewArrivalAnnouncement(""), 4000);
+      }
+      knownIdsRef.current = new Set(incoming.map((e) => e.id));
+      setEntries(incoming);
+      setTodayCompleted(data.todayCompleted ?? initialTodayCompleted);
+    } catch {
+      // Network error during poll — ignore, will retry next interval
+    }
+  }, [initialTodayCompleted]);
+
+  // Kick off polling; stop when the component unmounts
+  useEffect(() => {
+    const id = window.setInterval(() => void refreshQueue(), POLL_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [refreshQueue]);
 
   const waitingCount = useMemo(() => entries.filter((entry) => entry.status === "waiting").length, [entries]);
   const servingCount = useMemo(() => entries.filter((entry) => entry.status === "serving").length, [entries]);
@@ -46,6 +84,11 @@ export function QueueDashboardClient({
 
       if (remove || status === "completed" || status === "cancelled") {
         setEntries((current) => current.filter((entry) => entry.id !== entryId).map((entry, index) => ({ ...entry, position: index + 1 })));
+        // Keep knownIds in sync so the next poll doesn't re-announce this entry
+        knownIdsRef.current.delete(entryId);
+        if (status === "completed") {
+          setTodayCompleted((n) => n + 1);
+        }
       } else {
         setEntries((current) => current.map((entry) => entry.id === entryId ? { ...entry, status } : entry));
       }
@@ -61,11 +104,24 @@ export function QueueDashboardClient({
     <div className="space-y-8">
       <section className="flex flex-col gap-3">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">Gestione coda</p>
-        <h1 className="text-3xl font-bold text-slate-900">Coda walk-in</h1>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h1 className="text-3xl font-bold text-slate-900">Coda walk-in</h1>
+          {/* Freshness indicator — purely informational, not read aloud every poll */}
+          <p className="text-xs text-slate-400" aria-live="off">
+            {lastRefreshed
+              ? `Aggiornata alle ${lastRefreshed.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+              : "Aggiornamento automatico ogni 20 s"}
+          </p>
+        </div>
         <p className="max-w-3xl text-sm leading-6 text-slate-600">
           Chiama il prossimo cliente, mettilo in servizio o chiudi il turno senza uscire dalla dashboard.
         </p>
       </section>
+
+      {/* Polite live region — announces new arrivals to screen-reader users */}
+      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {newArrivalAnnouncement}
+      </span>
 
       {/* Always-mounted assertive live region — single, reliable SR error announcement */}
       <p role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">{error}</p>
