@@ -1,490 +1,599 @@
-// Seed Script — Demo Data for Bottega Digitale
-// Creates 3 realistic Italian demo businesses with full data
-// Usage: npx tsx prisma/seed.ts
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
 
 const tursoUrl = process.env.TURSO_DATABASE_URL;
 const tursoToken = process.env.TURSO_AUTH_TOKEN;
-
-const adapter = new PrismaLibSql(
-  tursoUrl
-    ? { url: tursoUrl, authToken: tursoToken }
-    : { url: "file:prisma/dev.db" },
-);
-
+const databaseUrl = process.env.DATABASE_URL ?? "file:./dev.db";
+const adapter = new PrismaLibSql(tursoUrl ? { url: tursoUrl, authToken: tursoToken } : { url: databaseUrl });
 const prisma = new PrismaClient({ adapter });
+const now = new Date();
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-// ─── Helpers ────────────────────────────────────────────────────
+const daysAgo = (days: number, hour = 10, minute = 0) => {
+  const value = new Date(now.getTime() - days * DAY_MS);
+  value.setHours(hour, minute, 0, 0);
+  return value;
+};
 
-function cuid(): string {
-  return `seed_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
-}
+const daysFromNow = (days: number, hour = 10, minute = 0) => {
+  const value = new Date(now.getTime() + days * DAY_MS);
+  value.setHours(hour, minute, 0, 0);
+  return value;
+};
 
-function randomPhone(): string {
-  const prefix = ["+39333", "+39347", "+39389", "+39320", "+39338"][Math.floor(Math.random() * 5)];
-  return `${prefix}${Math.floor(1000000 + Math.random() * 9000000)}`;
-}
+const todayAt = (hour: number, minute = 0) => {
+  const value = new Date(now);
+  value.setHours(hour, minute, 0, 0);
+  return value;
+};
 
-function randomDate(daysBack: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - Math.floor(Math.random() * daysBack));
-  d.setHours(8 + Math.floor(Math.random() * 10), Math.floor(Math.random() * 4) * 15, 0, 0);
-  return d;
-}
-
-function futureDate(daysAhead: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + Math.floor(Math.random() * daysAhead) + 1);
-  d.setHours(8 + Math.floor(Math.random() * 10), Math.floor(Math.random() * 4) * 15, 0, 0);
-  return d;
-}
-
-const ITALIAN_NAMES = [
-  "Marco Rossi", "Giulia Bianchi", "Luca Ferrari", "Sofia Romano", "Alessandro Colombo",
-  "Chiara Ricci", "Andrea Marino", "Valentina Greco", "Matteo Bruno", "Francesca Costa",
-  "Davide Galli", "Elena Conti", "Simone De Luca", "Laura Mancini", "Federico Barbieri",
-  "Martina Fontana", "Giovanni Santoro", "Sara Mariani", "Pietro Rinaldi", "Anna Caruso",
-  "Roberto Lombardi", "Claudia Moretti", "Stefano Marchetti", "Maria Esposito", "Fabio Leone",
-  "Paola Ferrara", "Nicola Serra", "Silvia Pellegrini", "Antonio Vitale", "Elisa Fabbri",
-  "Giuseppe Gentile", "Cristina Palumbo", "Emanuele Benedetti", "Ilaria Parisi", "Lorenzo Sala",
-  "Barbara De Angelis", "Riccardo Testa", "Monica Neri", "Daniele Grassi", "Roberta Farina",
-  "Carlo Marchetti", "Angela De Rosa", "Vincenzo Gatto", "Teresa Ruggiero", "Paolo Amato",
-  "Daniela Vitali", "Michele Bernardi", "Patrizia Rizzi", "Franco Basile", "Lucia Olivieri",
-];
-
-const OPENING_HOURS = JSON.stringify([
-  "Lun 09:00-13:00, 15:00-19:30",
-  "Mar 09:00-13:00, 15:00-19:30",
-  "Mer 09:00-13:00, 15:00-19:30",
-  "Gio 09:00-13:00, 15:00-19:30",
-  "Ven 09:00-13:00, 15:00-19:30",
-  "Sab 09:00-13:00",
-  "Dom Chiuso",
+const round = (value: number, decimals = 2) => Math.round(value * 10 ** decimals) / 10 ** decimals;
+const pick = <T,>(values: readonly T[], index: number) => values[index % values.length]!;
+const commonWorkingHours = JSON.stringify([
+  { day: "Mon", from: "09:00", to: "13:00", from2: "15:00", to2: "19:00" },
+  { day: "Tue", from: "09:00", to: "13:00", from2: "15:00", to2: "19:00" },
+  { day: "Wed", from: "09:00", to: "13:00", from2: "15:00", to2: "19:00" },
+  { day: "Thu", from: "09:00", to: "13:00", from2: "15:00", to2: "19:00" },
+  { day: "Fri", from: "09:00", to: "13:00", from2: "15:00", to2: "19:00" },
+  { day: "Sat", from: "09:00", to: "13:00" },
 ]);
 
-// ─── Seed Data ──────────────────────────────────────────────────
+const firstNames = ["Marco", "Giulia", "Luca", "Sofia", "Alessandro", "Chiara", "Andrea", "Valentina", "Matteo", "Francesca", "Davide", "Elena", "Simone", "Laura", "Federico", "Martina", "Giovanni", "Sara", "Pietro", "Anna", "Roberto", "Claudia", "Stefano", "Maria", "Fabio", "Paola", "Nicola", "Silvia", "Antonio", "Elisa", "Gabriele", "Irene", "Tommaso", "Linda", "Samuele", "Veronica"] as const;
+const lastNames = ["Rossi", "Bianchi", "Ferrari", "Romano", "Ricci", "Marino", "Greco", "Bruni", "Conti", "Mancini", "Santoro", "Rinaldi", "Moretti", "Leone", "Ferrara", "Vitale", "Casadei", "Fabbri", "Mazzotti", "Pasini", "Monti", "Donati", "Ravaglia", "Guidi", "Nanni", "Randi", "Savini", "Gori", "Gualtieri", "Melandri"] as const;
+const channels = ["Sito web", "WhatsApp", "Instagram", "Telefono", "Online"] as const;
 
-async function seedBarbershop() {
-  const businessId = cuid();
-  const ownerId = cuid();
+function customerName(index: number) {
+  return `${firstNames[index % firstNames.length]} ${lastNames[(index * 3) % lastNames.length]}`;
+}
 
-  // Owner
-  await prisma.user.create({
-    data: {
-      id: ownerId,
-      email: "marco@barberiadeforli.it",
-      name: "Marco Bellini",
-      passwordHash: "$2b$10$placeholder_hash_barbershop",
-      role: "owner",
-    },
+function customerPhone(index: number) {
+  return `+3934${String(2000000 + index * 137).padStart(7, "0")}`;
+}
+
+interface SeedUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+interface SeedService { id: string; name: string; priceEuro: number; durationMinutes: number; }
+interface SeedStaff { id: string; userId?: string; name: string; role: string; color: string; }
+interface SeedReview { author: string; rating: number; comment: string; }
+interface SeedCategory { id: string; name: string; }
+interface SeedProduct { id: string; categoryId: string; name: string; description: string; priceEuro: number; stock: number; }
+interface SeedBusiness {
+  id: string;
+  ownerUserId: string;
+  name: string;
+  slug: string;
+  category: string;
+  city: string;
+  address: string;
+  phone: string;
+  email: string;
+  description: string;
+  openingHours: string[];
+  subscriptionTier: string;
+  avgServiceMinutes: number;
+  partitaIva: string;
+  codiceFiscale: string;
+  codiceDestinatario: string;
+  regimeFiscale: string;
+  vatRate: number;
+  bookingCount: number;
+  customerOffset: number;
+  catalogEnabled?: boolean;
+  services: SeedService[];
+  staff: SeedStaff[];
+  reviews: SeedReview[];
+  socialPosts: string[];
+  giftCards: number[];
+  automationLabels: string[];
+  productCategories?: SeedCategory[];
+  products?: SeedProduct[];
+  orderCount?: number;
+}
+interface SeedData { users: SeedUser[]; businesses: SeedBusiness[]; }
+
+const dataPath = path.join(process.cwd(), "prisma/seed-data/demo.json");
+const seedData = JSON.parse(readFileSync(dataPath, "utf8")) as SeedData;
+
+async function clearDatabase() {
+  await prisma.webhookDelivery.deleteMany();
+  await prisma.webhookEndpoint.deleteMany();
+  await prisma.apiKey.deleteMany();
+  await prisma.mediaAsset.deleteMany();
+  await prisma.campaign.deleteMany();
+  await prisma.npsResponse.deleteMany();
+  await prisma.npsSurvey.deleteMany();
+  await prisma.notificationLog.deleteMany();
+  await prisma.notificationPreference.deleteMany();
+  await prisma.emailTemplateOverride.deleteMany();
+  await prisma.emailDelivery.deleteMany();
+  await prisma.dataExportRequest.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.customerConsent.deleteMany();
+  await prisma.businessHealthScore.deleteMany();
+  await prisma.platformEvent.deleteMany();
+  await prisma.marketplaceListing.deleteMany();
+  await prisma.translationOverride.deleteMany();
+  await prisma.regionConfig.deleteMany();
+  await prisma.accountantClientLink.deleteMany();
+  await prisma.accountant.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.paymentTransaction.deleteMany();
+  await prisma.giftCard.deleteMany();
+  await prisma.groupSubscription.deleteMany();
+  await prisma.associationAdmin.deleteMany();
+  await prisma.associationMembership.deleteMany();
+  await prisma.association.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.productCategory.deleteMany();
+  await prisma.conversationState.deleteMany();
+  await prisma.rateLimit.deleteMany();
+  await prisma.pushSubscription.deleteMany();
+  await prisma.voucher.deleteMany();
+  await prisma.crossPromotion.deleteMany();
+  await prisma.partnership.deleteMany();
+  await prisma.invoiceLine.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.fiscalProfile.deleteMany();
+  await prisma.customerSession.deleteMany();
+  await prisma.queueEntry.deleteMany();
+  await prisma.flowExecution.deleteMany();
+  await prisma.automationFlow.deleteMany();
+  await prisma.loyaltyRedemption.deleteMany();
+  await prisma.loyaltyCard.deleteMany();
+  await prisma.socialPost.deleteMany();
+  await prisma.whatsappMessage.deleteMany();
+  await prisma.review.deleteMany();
+  await prisma.booking.deleteMany();
+  await prisma.service.deleteMany();
+  await prisma.staffProfile.deleteMany();
+  await prisma.job.deleteMany();
+  await prisma.insight.deleteMany();
+  await prisma.customer.deleteMany();
+  await prisma.membership.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.business.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.stripeEvent.deleteMany();
+}
+
+function buildCustomers(business: SeedBusiness) {
+  return Array.from({ length: 56 }, (_, index) => {
+    const globalIndex = business.customerOffset + index;
+    const visits = 1 + (globalIndex % 14);
+    const loyaltyPoints = visits * 9 + (index % 3) * 4;
+    return {
+      id: `customer-${business.slug}-${index + 1}`,
+      businessId: business.id,
+      name: customerName(globalIndex),
+      phone: customerPhone(globalIndex),
+      email: index % 5 === 0 ? `cliente${globalIndex}@email.it` : undefined,
+      birthday: index % 6 === 0 ? daysAgo(9000 + globalIndex, 12) : undefined,
+      lastVisit: daysAgo((globalIndex % 40) + 1, 12),
+      lastLogin: index % 7 === 0 ? daysAgo(index + 2, 20) : undefined,
+      totalVisits: visits,
+      loyaltyPoints,
+      notifyWhatsApp: index % 4 !== 0,
+      notifyPush: index % 5 !== 0,
+    };
+  });
+}
+
+function buildBookings(business: SeedBusiness, customers: ReturnType<typeof buildCustomers>) {
+  return Array.from({ length: business.bookingCount }, (_, index) => {
+    const isFuture = index >= business.bookingCount - 12;
+    const customer = customers[index % customers.length]!;
+    const service = business.services[(index * 3) % business.services.length]!;
+    const staff = business.staff[(index + 1) % business.staff.length]!;
+    const slot = isFuture ? daysFromNow((index % 14) + 1, 9 + (index % 7), (index % 4) * 15) : daysAgo((index * 2) % 90 + 1, 9 + (index % 8), (index % 4) * 15);
+    return {
+      id: `booking-${business.slug}-${index + 1}`,
+      businessId: business.id,
+      customerId: customer.id,
+      serviceId: service.id,
+      staffId: staff.id,
+      customerName: customer.name,
+      customerPhone: customer.phone,
+      service: service.name,
+      startsAt: slot,
+      durationMinutes: service.durationMinutes,
+      status: isFuture ? (index % 3 === 0 ? "In attesa" : "Confermata") : index % 13 === 0 ? "Cancellata" : "Completata",
+      channel: pick(channels, index),
+      priceEuro: service.priceEuro,
+      notes: isFuture ? "Cliente confermato via reminder automatico." : index % 9 === 0 ? "Richiesta posto vicino alla vetrina / tavolo finestra." : undefined,
+    };
+  });
+}
+
+function buildQueues(business: SeedBusiness, customers: ReturnType<typeof buildCustomers>) {
+  return Array.from({ length: 4 }, (_, index) => ({
+    id: `queue-${business.slug}-${index + 1}`,
+    businessId: business.id,
+    customerId: customers[index]?.id,
+    customerName: customers[index]?.name ?? `Walk-in ${index + 1}`,
+    customerPhone: customers[index]?.phone,
+    position: index + 1,
+    status: pick(["waiting", "called", "serving", "completed"], index),
+    estimatedWaitMin: 8 + index * 7,
+    createdAt: todayAt(9 + index, 10),
+    calledAt: index >= 1 ? todayAt(9 + index, 25) : undefined,
+    completedAt: index === 3 ? todayAt(11, 15) : undefined,
+  }));
+}
+
+function buildLoyalty(business: SeedBusiness, customers: ReturnType<typeof buildCustomers>) {
+  const cards = customers.slice(0, 24).map((customer, index) => ({
+    id: `loyalty-${business.slug}-${index + 1}`,
+    businessId: business.id,
+    customerId: customer.id,
+    points: customer.loyaltyPoints,
+    totalEarned: customer.loyaltyPoints + 10 + (index % 4) * 8,
+  }));
+  const redemptions = cards.slice(0, 5).map((card, index) => ({
+    id: `loyalty-redemption-${business.slug}-${index + 1}`,
+    businessId: business.id,
+    cardId: card.id,
+    points: 80,
+    reward: index % 2 === 0 ? "Premio fedeltà" : "Buono prossimo acquisto",
+    createdAt: daysAgo(18 - index, 18),
+  }));
+  return { cards, redemptions };
+}
+
+function buildInvoices(business: SeedBusiness, fiscalProfileId: string, services: SeedService[], customers: ReturnType<typeof buildCustomers>) {
+  const invoices = Array.from({ length: 6 }, (_, index) => {
+    const customer = customers[(index * 7) % customers.length]!;
+    const service = services[(index * 2) % services.length]!;
+    const quantity = service.priceEuro > 0 ? 1 + (index % 2) : 2 + (index % 3);
+    const unitPrice = service.priceEuro > 0 ? service.priceEuro : business.category === "Ristorante" ? 22 : 18;
+    const totalNet = round(quantity * unitPrice, 2);
+    const totalVat = round(totalNet * (business.vatRate / 100), 2);
+    return {
+      id: `invoice-${business.slug}-${index + 1}`,
+      fiscalProfileId,
+      progressiveNumber: index + 1,
+      fiscalYear: now.getFullYear(),
+      customerName: customer.name,
+      customerFiscalCode: `CF${String(index + 1).padStart(6, "0")}${business.slug.slice(0, 3).toUpperCase()}`,
+      customerAddress: `Via Demo ${index + 4}, ${business.city}`,
+      totalNet,
+      totalVat,
+      totalGross: round(totalNet + totalVat, 2),
+      vatRate: business.vatRate,
+      status: index < 4 ? "consegnata" : "inviata",
+      sdiIdentifier: `${business.slug.slice(0, 3).toUpperCase()}-${now.getFullYear()}-${index + 1}`,
+      pdfUrl: `https://demo.bottega.local/invoices/${business.slug}-${index + 1}.pdf`,
+      xmlContent: `<Fattura id='${business.slug}-${index + 1}'/>`,
+      notes: index % 2 === 0 ? "Incasso registrato su POS del punto vendita." : "Documento inviato automaticamente via SDI.",
+      issuedAt: daysAgo(28 - index * 4, 9),
+    };
   });
 
-  // Business
+  const lines = invoices.map((invoice, index) => ({
+    id: `invoice-line-${business.slug}-${index + 1}`,
+    invoiceId: invoice.id,
+    description: business.category === "Ristorante" ? `Servizio ${services[(index * 2) % services.length]!.name} + coperti` : services[(index * 2) % services.length]!.name,
+    quantity: business.category === "Ristorante" ? 2 + (index % 3) : 1 + (index % 2),
+    unitPrice: round(invoice.totalNet / (business.category === "Ristorante" ? 2 + (index % 3) : 1 + (index % 2)), 2),
+    vatRate: business.vatRate,
+    totalNet: invoice.totalNet,
+    totalVat: invoice.totalVat,
+  }));
+
+  return { invoices, lines };
+}
+
+function buildWhatsApp(business: SeedBusiness, customers: ReturnType<typeof buildCustomers>) {
+  const outboundTemplates = [
+    "Ciao! Ti ricordiamo il tuo appuntamento di domani.",
+    "Grazie per essere passato da noi, ci lasci una recensione?",
+    "La tua richiesta è stata confermata. Ti aspettiamo.",
+    "Il tuo ordine è pronto per il ritiro in negozio.",
+  ] as const;
+  const inboundTemplates = [
+    "Posso spostare l'appuntamento di mezz'ora?",
+    "Avete disponibilità per oggi pomeriggio?",
+    "Grazie, tutto perfetto!",
+    "Posso aggiungere una persona alla prenotazione?",
+  ] as const;
+  return Array.from({ length: 10 }, (_, index) => ({
+    id: `wa-${business.slug}-${index + 1}`,
+    businessId: business.id,
+    direction: index % 2 === 0 ? "outbound" : "inbound",
+    phone: customers[index]?.phone ?? customerPhone(index),
+    body: index % 2 === 0 ? pick(outboundTemplates, index) : pick(inboundTemplates, index),
+    status: index % 5 === 0 ? "read" : index % 3 === 0 ? "delivered" : "sent",
+    templateId: index % 2 === 0 ? `tpl-${business.slug}-${(index % 3) + 1}` : undefined,
+    createdAt: daysAgo(index % 9, 18 - (index % 4), 10),
+  }));
+}
+
+function buildSocialPosts(business: SeedBusiness) {
+  return business.socialPosts.map((caption, index) => ({
+    id: `social-${business.slug}-${index + 1}`,
+    businessId: business.id,
+    imageUrl: `https://demo.bottega.local/${business.slug}/post-${index + 1}.jpg`,
+    caption,
+    hashtags: business.category === "Barbiere" ? "#forli,#barber,#stileuomo" : business.category === "Ristorante" ? "#cesena,#cucinadiromagna,#trattoria" : "#ravenna,#flowers,#bouquet",
+    platform: index % 2 === 0 ? "instagram" : "facebook",
+    status: index < 3 ? "published" : "scheduled",
+    scheduledAt: index < 3 ? undefined : daysFromNow(index + 1, 10),
+    publishedAt: index < 3 ? daysAgo(index + 2, 12) : undefined,
+  }));
+}
+
+function buildGiftCards(business: SeedBusiness) {
+  return business.giftCards.map((amount, index) => ({
+    id: `gift-${business.slug}-${index + 1}`,
+    businessId: business.id,
+    code: `${business.slug.slice(0, 4).toUpperCase()}-${String(index + 1).padStart(3, "0")}`,
+    amountEuro: amount,
+    balanceEuro: index === 1 ? 0 : amount,
+    purchaserName: customerName(business.customerOffset + index),
+    purchaserPhone: customerPhone(business.customerOffset + index),
+    recipientName: customerName(business.customerOffset + index + 20),
+    recipientPhone: customerPhone(business.customerOffset + index + 20),
+    message: "Un pensiero speciale dal tuo negozio preferito.",
+    status: index === 1 ? "redeemed" : "active",
+    expiresAt: daysFromNow(180 + index * 20),
+    redeemedAt: index === 1 ? daysAgo(12, 16) : undefined,
+    createdAt: daysAgo(35 - index * 4, 11),
+  }));
+}
+
+function buildAutomations(business: SeedBusiness) {
+  const flows = business.automationLabels.map((label, index) => ({
+    id: `flow-${business.slug}-${index + 1}`,
+    businessId: business.id,
+    name: label,
+    description: `${label} configurato per il demo account di ${business.name}.`,
+    enabled: index !== 1 || business.category !== "Barbiere",
+    triggerEvent: index === 0 ? "booking.created" : index === 1 ? "booking.completed" : "loyalty.threshold_reached",
+    conditions: JSON.stringify({ channel: index === 0 ? "whatsapp" : "dashboard", minVisits: index === 2 ? 6 : 0 }),
+    actions: JSON.stringify([{ type: index === 0 ? "send_whatsapp" : index === 1 ? "request_review" : "issue_reward" }]),
+  }));
+  const executions = flows.flatMap((flow, index) => [0, 1].map((step) => ({
+    id: `execution-${flow.id}-${step + 1}`,
+    flowId: flow.id,
+    triggerData: JSON.stringify({ source: step === 0 ? "system" : "dashboard", customer: customerName(index + step) }),
+    status: step === 0 ? "completed" : index % 3 === 0 ? "running" : "completed",
+    results: JSON.stringify([{ action: "message", outcome: "sent" }]),
+    startedAt: daysAgo(index + step + 1, 8 + step),
+    completedAt: step === 0 || index % 3 !== 0 ? daysAgo(index + step + 1, 8 + step, 8) : undefined,
+  })));
+  return { flows, executions };
+}
+
+function buildCatalogOrders(business: SeedBusiness, products: SeedProduct[] | undefined, customers: ReturnType<typeof buildCustomers>) {
+  if (!products || products.length === 0) {
+    return { categories: [], items: [], orders: [], orderItems: [] };
+  }
+
+  const categories = business.productCategories?.map((category, index) => ({ id: category.id, businessId: business.id, name: category.name, sortOrder: index })) ?? [];
+  const items = products.map((product, index) => ({ ...product, businessId: business.id, imageUrl: `https://demo.bottega.local/${business.slug}/product-${index + 1}.jpg`, isAvailable: true, sortOrder: index }));
+  const orders = Array.from({ length: business.orderCount ?? 0 }, (_, index) => {
+    const customer = customers[index % customers.length]!;
+    const selected = [items[index % items.length]!, items[(index + 2) % items.length]!].filter((item, itemIndex, array) => array.findIndex((candidate) => candidate.id === item.id) === itemIndex).slice(0, 1 + (index % 2));
+    const total = round(selected.reduce((sum, item) => sum + item.priceEuro, 0), 2);
+    return {
+      id: `order-shop-${business.slug}-${index + 1}`,
+      businessId: business.id,
+      customerName: customer.name,
+      customerPhone: customer.phone,
+      customerEmail: customer.email,
+      status: pick(["ricevuto", "in_preparazione", "pronto", "consegnato"], index),
+      channel: index % 3 === 0 ? "whatsapp" : "online",
+      totalEuro: total,
+      paymentStatus: index % 4 === 0 ? "pending" : "paid",
+      notes: index % 5 === 0 ? "Cliente richiede confezione regalo." : undefined,
+      createdAt: daysAgo(25 - index, 13),
+      updatedAt: daysAgo(25 - index, 14),
+      _selected: selected,
+    };
+  });
+  const orderItems = orders.flatMap((order) => order._selected.map((product, index) => ({
+    id: `order-item-${order.id}-${index + 1}`,
+    orderId: order.id,
+    productId: product.id,
+    quantity: 1,
+    unitPrice: product.priceEuro,
+  })));
+  return { categories, items, orders: orders.map(({ _selected, ...order }) => order), orderItems };
+}
+
+async function seedBusiness(business: SeedBusiness, businessIndex: number) {
   await prisma.business.create({
     data: {
-      id: businessId,
-      name: "Barberia Da Marco",
-      slug: "barberia-da-marco",
-      category: "Barbiere",
-      city: "Forlì",
-      address: "Via Aurelio Saffi 42, 47121 Forlì FC",
-      phone: "+393331234567",
-      email: "info@barberiadeforli.it",
-      description: "La barberia di riferimento nel cuore di Forlì. Tagli classici e moderni, trattamenti barba, e un ambiente accogliente dove ogni cliente è di casa dal 2005.",
-      openingHours: OPENING_HOURS,
+      id: business.id,
+      name: business.name,
+      slug: business.slug,
+      category: business.category,
+      city: business.city,
+      address: business.address,
+      phone: business.phone,
+      email: business.email,
+      description: business.description,
+      openingHours: JSON.stringify(business.openingHours),
       websitePublished: true,
       onlineBookingEnabled: true,
       loyaltyEnabled: true,
       loyaltyPointsPerVisit: 10,
-      loyaltyRewardThreshold: 100,
-      loyaltyRewardName: "Taglio gratuito",
+      loyaltyRewardThreshold: 80,
+      loyaltyRewardName: business.category === "Barbiere" ? "Servizio gratuito" : business.category === "Ristorante" ? "Dessert omaggio" : "Mini bouquet omaggio",
       queueEnabled: true,
-      avgServiceMinutes: 25,
-      subscriptionTier: "maestro",
+      avgServiceMinutes: business.avgServiceMinutes,
+      subscriptionTier: business.subscriptionTier,
       locale: "it",
-      partitaIva: "IT04123456789",
-      codiceFiscale: "BLLMRC80A01D704X",
+      partitaIva: business.partitaIva,
+      codiceFiscale: business.codiceFiscale,
+      codiceDestinatarioSdi: business.codiceDestinatario,
+      regimeFiscale: business.regimeFiscale,
+      catalogEnabled: Boolean(business.catalogEnabled),
+      depositsEnabled: business.category === "Ristorante" || business.category === "Fiorista",
+      depositPercentage: business.category === "Ristorante" ? 25 : 30,
+      crossPromoEnabled: true,
+      whatsappAiEnabled: true,
+      whatsappAiFaqs: JSON.stringify([{ q: "Come prenoto?", a: "Puoi prenotare dal sito o scriverci su WhatsApp." }]),
+      websiteVisitsThisMonth: 420 + businessIndex * 115,
     },
   });
 
-  await prisma.membership.create({
-    data: { id: cuid(), userId: ownerId, businessId, role: "owner" },
+  await prisma.membership.create({ data: { id: `membership-${business.slug}-owner`, userId: business.ownerUserId, businessId: business.id, role: "owner" } });
+
+  const staffProfiles = business.staff.map((staff, index) => ({
+    id: staff.id,
+    businessId: business.id,
+    userId: staff.userId,
+    name: staff.name,
+    role: staff.role,
+    color: staff.color,
+    email: `${staff.name.split(" ")[0]?.toLowerCase()}.${business.slug}@demo.it`,
+    phone: customerPhone(business.customerOffset + 300 + index),
+    workingHours: commonWorkingHours,
+    serviceIds: JSON.stringify(
+      staff.role === "owner"
+        ? business.services.map((service) => service.id)
+        : staff.role === "manager"
+          ? business.services.slice(0, Math.max(3, business.services.length - 1)).map((service) => service.id)
+          : business.services.filter((_, serviceIndex) => (serviceIndex + index) % 2 === 0).map((service) => service.id),
+    ),
+    active: true,
+  }));
+
+  await prisma.staffProfile.createMany({ data: staffProfiles });
+  await prisma.service.createMany({ data: business.services.map((service) => ({ ...service, businessId: business.id })) });
+
+  const customers = buildCustomers(business);
+  await prisma.customer.createMany({ data: customers });
+
+  const bookings = buildBookings(business, customers);
+  await prisma.booking.createMany({ data: bookings });
+  await prisma.queueEntry.createMany({ data: buildQueues(business, customers) });
+
+  await prisma.review.createMany({
+    data: business.reviews.map((review, index) => ({
+      id: `review-${business.slug}-${index + 1}`,
+      businessId: business.id,
+      author: review.author,
+      rating: review.rating,
+      date: daysAgo(6 + index * 4, 12),
+      comment: review.comment,
+      responseSuggestion: "Rispondi ringraziando e invitando il cliente a tornare.",
+      responded: index % 3 === 0,
+      googleReviewId: `google-${business.slug}-${index + 1}`,
+    })),
   });
 
-  // Services
-  const services = [
-    { name: "Taglio uomo", priceEuro: 18, durationMinutes: 25 },
-    { name: "Taglio + barba", priceEuro: 28, durationMinutes: 40 },
-    { name: "Barba e baffi", priceEuro: 12, durationMinutes: 20 },
-    { name: "Taglio bambino", priceEuro: 12, durationMinutes: 20 },
-    { name: "Trattamento capelli", priceEuro: 35, durationMinutes: 45 },
-    { name: "Rasatura tradizionale", priceEuro: 22, durationMinutes: 30 },
-  ];
+  const { cards, redemptions } = buildLoyalty(business, customers);
+  await prisma.loyaltyCard.createMany({ data: cards });
+  await prisma.loyaltyRedemption.createMany({ data: redemptions });
 
-  const serviceIds: string[] = [];
-  for (const s of services) {
-    const id = cuid();
-    serviceIds.push(id);
-    await prisma.service.create({
-      data: { id, businessId, ...s },
-    });
-  }
+  await prisma.whatsappMessage.createMany({ data: buildWhatsApp(business, customers) });
+  await prisma.socialPost.createMany({ data: buildSocialPosts(business) });
+  await prisma.giftCard.createMany({ data: buildGiftCards(business) });
 
-  // Customers (50)
-  const customerIds: string[] = [];
-  for (let i = 0; i < 50; i++) {
-    const id = cuid();
-    customerIds.push(id);
-    await prisma.customer.create({
-      data: {
-        id,
-        businessId,
-        name: ITALIAN_NAMES[i],
-        phone: randomPhone(),
-        email: i < 30 ? `${ITALIAN_NAMES[i].split(" ")[0].toLowerCase()}@email.it` : undefined,
-        lastVisit: randomDate(60),
-        totalVisits: Math.floor(Math.random() * 20) + 1,
-      },
-    });
-  }
+  const { flows, executions } = buildAutomations(business);
+  await prisma.automationFlow.createMany({ data: flows });
+  await prisma.flowExecution.createMany({ data: executions });
 
-  // Bookings (200) — mix of past completed and future confirmed
-  for (let i = 0; i < 200; i++) {
-    const isPast = i < 160;
-    const serviceIdx = Math.floor(Math.random() * services.length);
-    const customerIdx = Math.floor(Math.random() * customerIds.length);
-    await prisma.booking.create({
-      data: {
-        id: cuid(),
-        businessId,
-        customerId: customerIds[customerIdx],
-        serviceId: serviceIds[serviceIdx],
-        customerName: ITALIAN_NAMES[customerIdx],
-        customerPhone: randomPhone(),
-        service: services[serviceIdx].name,
-        startsAt: isPast ? randomDate(90) : futureDate(30),
-        durationMinutes: services[serviceIdx].durationMinutes,
-        status: isPast ? "Completata" : "Confermata",
-        channel: ["Sito web", "WhatsApp", "Telefono", "Online"][Math.floor(Math.random() * 4)],
-        priceEuro: services[serviceIdx].priceEuro,
-      },
-    });
-  }
+  const fiscalProfileId = `fiscal-${business.slug}`;
+  await prisma.fiscalProfile.create({
+    data: {
+      id: fiscalProfileId,
+      businessId: business.id,
+      ragioneSociale: business.name,
+      partitaIva: business.partitaIva,
+      codiceFiscale: business.codiceFiscale,
+      indirizzo: business.address,
+      cap: business.city === "Forlì" ? "47121" : business.city === "Cesena" ? "47521" : "48121",
+      citta: business.city,
+      provincia: business.city === "Ravenna" ? "RA" : "FC",
+      codiceDestinatario: business.codiceDestinatario,
+      regimeFiscale: business.regimeFiscale,
+    },
+  });
 
-  // Reviews (15)
-  const reviewComments = [
-    "Ottimo taglio, Marco è sempre preciso!",
-    "Ambiente accogliente, ci torno sicuramente.",
-    "Professionalità al top. Consigliato!",
-    "La rasatura tradizionale è un'esperienza unica.",
-    "Prezzi onesti e qualità eccellente.",
-    "Il miglior barbiere di Forlì, senza dubbio.",
-    "Taglio perfetto come sempre, grazie Marco!",
-    "Atmosfera rilassante e servizio impeccabile.",
-    "Consiglio a tutti, specialmente il trattamento barba.",
-    "Sempre soddisfatto. 5 stelle meritate.",
-    "Marco è un artista con le forbici!",
-    "Servizio veloce e risultato perfetto.",
-    "Ho portato anche mio figlio, entrambi contentissimi.",
-    "La barba non è mai stata così bella.",
-    "Puntuale, preciso, professionale. TOP!",
-  ];
-  for (let i = 0; i < 15; i++) {
-    await prisma.review.create({
-      data: {
-        id: cuid(),
-        businessId,
-        author: ITALIAN_NAMES[i],
-        rating: Math.random() > 0.2 ? 5 : 4,
-        date: randomDate(120),
-        comment: reviewComments[i],
-      },
-    });
-  }
+  const { invoices, lines } = buildInvoices(business, fiscalProfileId, business.services, customers);
+  await prisma.invoice.createMany({ data: invoices });
+  await prisma.invoiceLine.createMany({ data: lines });
 
-  // Loyalty cards for top customers
-  for (let i = 0; i < 20; i++) {
-    const points = Math.floor(Math.random() * 120);
-    await prisma.loyaltyCard.create({
-      data: {
-        id: cuid(),
-        businessId,
-        customerId: customerIds[i],
-        points,
-        totalEarned: points + Math.floor(Math.random() * 50),
-      },
-    });
-  }
+  const { categories, items, orders, orderItems } = buildCatalogOrders(business, business.products, customers);
+  if (categories.length) await prisma.productCategory.createMany({ data: categories });
+  if (items.length) await prisma.product.createMany({ data: items });
+  if (orders.length) await prisma.order.createMany({ data: orders });
+  if (orderItems.length) await prisma.orderItem.createMany({ data: orderItems });
 
-  console.log("✅ Barberia Da Marco — 6 servizi, 50 clienti, 200 prenotazioni, 15 recensioni");
-  return businessId;
+  await prisma.notification.createMany({
+    data: [
+      { id: `notification-${business.slug}-1`, businessId: business.id, type: "booking", title: "Picco prenotazioni weekend", body: "Le prenotazioni del weekend sono sopra la media del 18%.", priority: "normal" },
+      { id: `notification-${business.slug}-2`, businessId: business.id, type: "review", title: "Nuove recensioni da gestire", body: "Hai 2 recensioni recenti con suggerimento risposta già pronto.", priority: "normal" },
+      { id: `notification-${business.slug}-3`, businessId: business.id, type: "automation", title: "Automazione attiva", body: "Il flusso principale ha inviato con successo i reminder di oggi.", priority: "low" },
+    ],
+  });
+
+  await prisma.job.createMany({
+    data: [
+      { id: `job-${business.slug}-1`, businessId: business.id, type: "booking-reminder", status: "completed", priority: 2, payload: JSON.stringify({ total: 8 }), scheduledAt: daysAgo(1, 18), completedAt: daysAgo(1, 18, 2) },
+      { id: `job-${business.slug}-2`, businessId: business.id, type: "social-publisher", status: "pending", priority: 1, payload: JSON.stringify({ post: 1 }), scheduledAt: daysFromNow(1, 9) },
+      { id: `job-${business.slug}-3`, businessId: business.id, type: "insight-generator", status: "completed", priority: 1, payload: JSON.stringify({ scope: "dashboard" }), scheduledAt: daysAgo(2, 5), completedAt: daysAgo(2, 5, 4) },
+    ],
+  });
+
+  await prisma.insight.createMany({
+    data: [
+      { id: `insight-${business.slug}-1`, businessId: business.id, category: "revenue", title: "Finestra di upsell", body: `I clienti ${business.category === "Barbiere" ? "del mattino" : "del pranzo"} acquistano più facilmente extra e servizi accessori.`, actionLabel: "Apri dettagli" },
+      { id: `insight-${business.slug}-2`, businessId: business.id, category: "retention", title: "Clienti da ricontattare", body: "Una parte dei clienti fedeli non visita il negozio da oltre 30 giorni.", actionLabel: "Invia campagna" },
+    ],
+  });
+
+  await prisma.businessHealthScore.create({
+    data: {
+      id: `health-${business.slug}`,
+      businessId: business.id,
+      score: 82 + businessIndex * 4,
+      riskTier: "healthy",
+      loginFrequency7d: 5 + businessIndex,
+      loginFrequency30d: 18 + businessIndex * 2,
+      featureBreadth: business.catalogEnabled ? 8 : 6,
+      bookingTrend: businessIndex === 1 ? "growing" : "stable",
+      lastCalculated: daysAgo(0, 6),
+    },
+  });
 }
 
-async function seedRestaurant() {
-  const businessId = cuid();
-  const ownerId = cuid();
+async function seed() {
+  await clearDatabase();
+  await prisma.user.createMany({ data: seedData.users.map((user) => ({ ...user, passwordHash: "demo-password-hash" })) });
 
-  await prisma.user.create({
-    data: {
-      id: ownerId,
-      email: "rosa@trattorianonnarosa.it",
-      name: "Rosa Marchetti",
-      passwordHash: "$2b$10$placeholder_hash_restaurant",
-      role: "owner",
-    },
-  });
-
-  await prisma.business.create({
-    data: {
-      id: businessId,
-      name: "Trattoria Nonna Rosa",
-      slug: "trattoria-nonna-rosa",
-      category: "Ristorante",
-      city: "Forlì",
-      address: "Corso della Repubblica 18, 47121 Forlì FC",
-      phone: "+393489876543",
-      email: "info@trattorianonnarosa.it",
-      description: "Cucina romagnola autentica con ricette di famiglia dal 1978. Piadina fatta a mano, passatelli, cappelletti e il miglior ragù della Romagna.",
-      openingHours: JSON.stringify([
-        "Lun Chiuso",
-        "Mar 12:00-14:30, 19:00-22:30",
-        "Mer 12:00-14:30, 19:00-22:30",
-        "Gio 12:00-14:30, 19:00-22:30",
-        "Ven 12:00-14:30, 19:00-23:00",
-        "Sab 12:00-14:30, 19:00-23:00",
-        "Dom 12:00-15:00",
-      ]),
-      websitePublished: true,
-      onlineBookingEnabled: true,
-      catalogEnabled: true,
-      subscriptionTier: "bottega",
-      locale: "it",
-      partitaIva: "IT04987654321",
-    },
-  });
-
-  await prisma.membership.create({
-    data: { id: cuid(), userId: ownerId, businessId, role: "owner" },
-  });
-
-  // Products (12)
-  const categoryId = cuid();
-  await prisma.productCategory.create({
-    data: { id: categoryId, businessId, name: "Menu", sortOrder: 0 },
-  });
-
-  const products = [
-    { name: "Cappelletti in brodo", priceEuro: 10, description: "Pasta fresca ripiena in brodo di cappone" },
-    { name: "Passatelli asciutti", priceEuro: 11, description: "Con ragù di salsiccia e funghi porcini" },
-    { name: "Tagliatelle al ragù", priceEuro: 10, description: "Ragù di Nonna Rosa, ricetta segreta" },
-    { name: "Piadina romagnola", priceEuro: 7, description: "Fatta a mano, farcita con squacquerone e rucola" },
-    { name: "Coniglio alla romagnola", priceEuro: 14, description: "Con patate al forno e rosmarino" },
-    { name: "Grigliata mista", priceEuro: 16, description: "Costata, salsiccia, braciola e verdure" },
-    { name: "Insalata dell'orto", priceEuro: 8, description: "Verdure di stagione dell'orto della nonna" },
-    { name: "Zuppa inglese", priceEuro: 6, description: "Dolce tradizionale con alchermes e crema" },
-    { name: "Tiramisù della casa", priceEuro: 6, description: "Con mascarpone fresco e caffè" },
-    { name: "Sangiovese DOC (calice)", priceEuro: 4, description: "Vino rosso locale di Predappio" },
-    { name: "Acqua minerale", priceEuro: 2, description: "Naturale o frizzante" },
-    { name: "Caffè espresso", priceEuro: 1.5, description: "Miscela artigianale" },
-  ];
-
-  const productIds: string[] = [];
-  for (const p of products) {
-    const id = cuid();
-    productIds.push(id);
-    await prisma.product.create({
-      data: { id, businessId, categoryId, ...p, isAvailable: true },
-    });
+  for (const [index, business] of seedData.businesses.entries()) {
+    await seedBusiness(business, index);
   }
 
-  // Orders (80)
-  for (let i = 0; i < 80; i++) {
-    const orderId = cuid();
-    const numItems = 1 + Math.floor(Math.random() * 3);
-    const selectedProducts = Array.from({ length: numItems }, () =>
-      products[Math.floor(Math.random() * products.length)]
-    );
-    const total = selectedProducts.reduce((s, p) => s + p.priceEuro, 0);
+  const [businesses, customers, bookings, reviews, giftCards] = await prisma.$transaction([
+    prisma.business.count(),
+    prisma.customer.count(),
+    prisma.booking.count(),
+    prisma.review.count(),
+    prisma.giftCard.count(),
+  ]);
 
-    await prisma.order.create({
-      data: {
-        id: orderId,
-        businessId,
-        customerName: ITALIAN_NAMES[Math.floor(Math.random() * ITALIAN_NAMES.length)],
-        customerPhone: randomPhone(),
-        status: ["ricevuto", "pronto", "consegnato"][Math.floor(Math.random() * 3)],
-        totalEuro: total,
-        paymentStatus: i < 60 ? "paid" : "pending",
-        createdAt: randomDate(60),
-      },
-    });
-
-    for (const sp of selectedProducts) {
-      const pidx = products.indexOf(sp);
-      await prisma.orderItem.create({
-        data: {
-          id: cuid(),
-          orderId,
-          productId: productIds[pidx],
-          quantity: 1,
-          unitPrice: sp.priceEuro,
-        },
-      });
-    }
-  }
-
-  // Reviews (8)
-  const reviewComments = [
-    "I cappelletti più buoni di tutta la Romagna!",
-    "Come mangiare a casa della nonna. Fantastico.",
-    "Piadina perfetta, servizio caloroso.",
-    "Ragù spettacolare, ci torno ogni settimana.",
-    "Ottimo rapporto qualità/prezzo. Ambiente familiare.",
-    "La zuppa inglese è da 10 e lode!",
-    "Prenotazione facile, servizio impeccabile.",
-    "Una vera trattoria romagnola. Imperdibile a Forlì.",
-  ];
-  for (let i = 0; i < 8; i++) {
-    await prisma.review.create({
-      data: {
-        id: cuid(),
-        businessId,
-        author: ITALIAN_NAMES[i + 15],
-        rating: Math.random() > 0.15 ? 5 : 4,
-        date: randomDate(90),
-        comment: reviewComments[i],
-      },
-    });
-  }
-
-  console.log("✅ Trattoria Nonna Rosa — 12 prodotti, 80 ordini, 8 recensioni");
-  return businessId;
+  console.log(`Seeded ${businesses} demo businesses, ${customers} customers, ${bookings} bookings, ${reviews} reviews and ${giftCards} gift cards.`);
 }
 
-async function seedFlorist() {
-  const businessId = cuid();
-  const ownerId = cuid();
-
-  await prisma.user.create({
-    data: {
-      id: ownerId,
-      email: "elena@fioristaginasole.it",
-      name: "Elena Fabbri",
-      passwordHash: "$2b$10$placeholder_hash_florist",
-      role: "owner",
-    },
-  });
-
-  await prisma.business.create({
-    data: {
-      id: businessId,
-      name: "Fiorista Girasole",
-      slug: "fiorista-girasole",
-      category: "Fiorista",
-      city: "Forlì",
-      address: "Piazza Aurelio Saffi 7, 47121 Forlì FC",
-      phone: "+393201112233",
-      email: "info@fioristaginasole.it",
-      description: "Bouquet artigianali, composizioni floreali per eventi e consegna a domicilio a Forlì. Fiori freschi ogni giorno dal mercato di Bologna.",
-      openingHours: JSON.stringify([
-        "Lun 09:00-13:00, 15:30-19:00",
-        "Mar 09:00-13:00, 15:30-19:00",
-        "Mer 09:00-13:00, 15:30-19:00",
-        "Gio 09:00-13:00, 15:30-19:00",
-        "Ven 09:00-13:00, 15:30-19:00",
-        "Sab 09:00-13:00",
-        "Dom Chiuso",
-      ]),
-      websitePublished: true,
-      catalogEnabled: true,
-      subscriptionTier: "bottega",
-      locale: "it",
-    },
-  });
-
-  await prisma.membership.create({
-    data: { id: cuid(), userId: ownerId, businessId, role: "owner" },
-  });
-
-  // Products (8)
-  const categoryId = cuid();
-  await prisma.productCategory.create({
-    data: { id: categoryId, businessId, name: "Bouquet & Composizioni", sortOrder: 0 },
-  });
-
-  const products = [
-    { name: "Bouquet di rose rosse", priceEuro: 35, description: "12 rose rosse a gambo lungo con verde decorativo" },
-    { name: "Composizione primavera", priceEuro: 28, description: "Tulipani, narcisi e ranuncoli di stagione" },
-    { name: "Bouquet misto del giorno", priceEuro: 22, description: "Fiori freschi selezionati dal fiorista" },
-    { name: "Orchidea in vaso", priceEuro: 45, description: "Phalaenopsis bianca con cachepot in ceramica" },
-    { name: "Centrotavola elegante", priceEuro: 55, description: "Composizione bassa per tavolo con fiori di stagione" },
-    { name: "Bouquet da sposa", priceEuro: 85, description: "Su misura, consulenza inclusa" },
-    { name: "Pianta grassa set", priceEuro: 18, description: "Set di 3 succulente in vasetti decorativi" },
-    { name: "Corona funebre", priceEuro: 120, description: "Con nastro personalizzato e consegna" },
-  ];
-
-  const productIds: string[] = [];
-  for (const p of products) {
-    const id = cuid();
-    productIds.push(id);
-    await prisma.product.create({
-      data: { id, businessId, categoryId, ...p, isAvailable: true },
-    });
-  }
-
-  // Orders (30)
-  for (let i = 0; i < 30; i++) {
-    const orderId = cuid();
-    const pIdx = Math.floor(Math.random() * products.length);
-    await prisma.order.create({
-      data: {
-        id: orderId,
-        businessId,
-        customerName: ITALIAN_NAMES[Math.floor(Math.random() * ITALIAN_NAMES.length)],
-        customerPhone: randomPhone(),
-        status: "consegnato",
-        totalEuro: products[pIdx].priceEuro,
-        paymentStatus: "paid",
-        createdAt: randomDate(90),
-      },
-    });
-    await prisma.orderItem.create({
-      data: {
-        id: cuid(),
-        orderId,
-        productId: productIds[pIdx],
-        quantity: 1,
-        unitPrice: products[pIdx].priceEuro,
-      },
-    });
-  }
-
-  console.log("✅ Fiorista Girasole — 8 prodotti, 30 ordini");
-  return businessId;
-}
-
-// ─── Main Seed Runner ───────────────────────────────────────────
-
-async function main() {
-  console.log("🌱 Seeding Bottega Digitale demo data...\n");
-  const start = Date.now();
-
-  try {
-    await seedBarbershop();
-    await seedRestaurant();
-    await seedFlorist();
-
-    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-    console.log(`\n✨ Seed completato in ${elapsed}s`);
-    console.log("   Attività demo pronte per presentazioni e test.\n");
-  } catch (err) {
-    console.error("❌ Errore durante il seeding:", err);
-    process.exit(1);
-  } finally {
+seed()
+  .catch((error) => {
+    console.error("Error seeding bottega-digitale demo data", error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
     await prisma.$disconnect();
-  }
-}
-
-main();
+  });

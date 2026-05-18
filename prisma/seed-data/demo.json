@@ -1,0 +1,245 @@
+{
+  "users": [
+    {
+      "id": "user-admin-platform",
+      "email": "admin@bottegadigitale.demo",
+      "name": "Paola Guidi",
+      "role": "admin"
+    },
+    {
+      "id": "user-owner-marco",
+      "email": "marco@barberiadamarco.it",
+      "name": "Marco Bellini",
+      "role": "owner"
+    },
+    {
+      "id": "user-owner-rosa",
+      "email": "rosa@trattorianonnarosa.it",
+      "name": "Rosa Fabbri",
+      "role": "owner"
+    },
+    {
+      "id": "user-owner-elisa",
+      "email": "elisa@fioristagirasole.it",
+      "name": "Elisa Girasoli",
+      "role": "owner"
+    }
+  ],
+  "businesses": [
+    {
+      "id": "biz-barberia-marco",
+      "ownerUserId": "user-owner-marco",
+      "name": "Barberia Da Marco",
+      "slug": "barberia-da-marco",
+      "category": "Barbiere",
+      "city": "Forlì",
+      "address": "Via Giorgio Regnoli 18, 47121 Forlì FC",
+      "phone": "+390543210101",
+      "email": "marco@barberiadamarco.it",
+      "description": "Barberia di quartiere con stile classico romagnolo, appuntamenti smart e coda walk-in gestita dal tablet in negozio.",
+      "openingHours": [
+        "Lun 09:00-13:00, 15:00-19:30",
+        "Mar 09:00-13:00, 15:00-19:30",
+        "Mer 09:00-13:00, 15:00-19:30",
+        "Gio 09:00-13:00, 15:00-19:30",
+        "Ven 09:00-13:00, 15:00-19:30",
+        "Sab 08:30-13:30",
+        "Dom Chiuso"
+      ],
+      "subscriptionTier": "maestro",
+      "avgServiceMinutes": 30,
+      "partitaIva": "IT04567011209",
+      "codiceFiscale": "BLLMRC84C15D704Q",
+      "codiceDestinatario": "M5UXCR1",
+      "regimeFiscale": "RF01",
+      "vatRate": 22,
+      "bookingCount": 110,
+      "customerOffset": 0,
+      "services": [
+        { "id": "svc-barber-taglio-classico", "name": "Taglio classico", "priceEuro": 22, "durationMinutes": 30 },
+        { "id": "svc-barber-fade", "name": "Fade moderno", "priceEuro": 24, "durationMinutes": 35 },
+        { "id": "svc-barber-taglio-barba", "name": "Taglio + barba", "priceEuro": 35, "durationMinutes": 50 },
+        { "id": "svc-barber-barba", "name": "Rifinitura barba", "priceEuro": 14, "durationMinutes": 20 },
+        { "id": "svc-barber-rasatura", "name": "Rasatura tradizionale", "priceEuro": 20, "durationMinutes": 30 },
+        { "id": "svc-barber-bimbo", "name": "Taglio bimbo", "priceEuro": 17, "durationMinutes": 25 }
+      ],
+      "staff": [
+        { "id": "staff-barber-marco", "userId": "user-owner-marco", "name": "Marco Bellini", "role": "owner", "color": "#0F766E" },
+        { "id": "staff-barber-giada", "name": "Giada Casali", "role": "staff", "color": "#2563EB" },
+        { "id": "staff-barber-diego", "name": "Diego Ravaioli", "role": "staff", "color": "#9333EA" }
+      ],
+      "reviews": [
+        { "author": "Andrea Rossi", "rating": 5, "comment": "Marco mi ha sistemato la barba alla perfezione, servizio preciso e sempre puntuale." },
+        { "author": "Lorenzo Fabbri", "rating": 5, "comment": "Prenotazione online comodissima e taglio impeccabile. La barberia migliore in centro a Forlì." },
+        { "author": "Michele Neri", "rating": 4, "comment": "Ambiente accogliente e personale molto attento, consigliato anche per i bambini." },
+        { "author": "Paolo Mariani", "rating": 5, "comment": "Fade moderno curato nei dettagli, ottimo rapporto qualità prezzo." },
+        { "author": "Stefano Villa", "rating": 5, "comment": "Rasatura tradizionale fatta come si deve, mi sento sempre seguito con grande professionalità." },
+        { "author": "Fabio Gentili", "rating": 4, "comment": "Sempre disponibili anche all'ultimo minuto grazie alla coda digitale." },
+        { "author": "Roberto Nanni", "rating": 5, "comment": "Negozio ordinato, appuntamento rispettato al minuto e risultato top." },
+        { "author": "Davide Lombardi", "rating": 5, "comment": "Il reminder WhatsApp mi salva ogni volta. Servizio davvero ben organizzato." }
+      ],
+      "socialPosts": [
+        "Nuovo look estivo, sfumature pulite e barba definita. Ti aspettiamo in bottega!",
+        "Sabato mattina pieno: prenota online e salta la fila in negozio.",
+        "Promo studenti: taglio classico + styling con prenotazione web.",
+        "Dietro le quinte della rasatura tradizionale del venerdì."],
+      "giftCards": [30, 50, 70],
+      "automationLabels": ["Reminder appuntamento", "Richiesta recensione 24h", "Premio fedeltà dopo 8 visite"]
+    },
+    {
+      "id": "biz-trattoria-rosa",
+      "ownerUserId": "user-owner-rosa",
+      "name": "Trattoria Nonna Rosa",
+      "slug": "trattoria-nonna-rosa",
+      "category": "Ristorante",
+      "city": "Cesena",
+      "address": "Via Chiaramonti 7, 47521 Cesena FC",
+      "phone": "+390547330220",
+      "email": "rosa@trattorianonnarosa.it",
+      "description": "Trattoria romagnola con prenotazioni tavoli, ordini take-away e piccola bottega digitale per pasta fresca e vini locali.",
+      "openingHours": [
+        "Lun Chiuso",
+        "Mar 12:00-15:00, 19:00-23:00",
+        "Mer 12:00-15:00, 19:00-23:00",
+        "Gio 12:00-15:00, 19:00-23:00",
+        "Ven 12:00-15:00, 19:00-23:30",
+        "Sab 12:00-15:30, 19:00-23:30",
+        "Dom 12:00-15:30"
+      ],
+      "subscriptionTier": "maestro",
+      "avgServiceMinutes": 95,
+      "partitaIva": "IT03899041205",
+      "codiceFiscale": "FBBRSO79M45C573R",
+      "codiceDestinatario": "SUBM70N",
+      "regimeFiscale": "RF01",
+      "vatRate": 10,
+      "bookingCount": 92,
+      "customerOffset": 70,
+      "catalogEnabled": true,
+      "services": [
+        { "id": "svc-trattoria-pranzo", "name": "Prenotazione pranzo", "priceEuro": 0, "durationMinutes": 90 },
+        { "id": "svc-trattoria-cena", "name": "Prenotazione cena", "priceEuro": 0, "durationMinutes": 120 },
+        { "id": "svc-trattoria-degustazione", "name": "Cena degustazione romagnola", "priceEuro": 38, "durationMinutes": 150 },
+        { "id": "svc-trattoria-pasta", "name": "Corso pasta fresca", "priceEuro": 55, "durationMinutes": 120 },
+        { "id": "svc-trattoria-catering", "name": "Preventivo catering", "priceEuro": 120, "durationMinutes": 60 },
+        { "id": "svc-trattoria-compleanno", "name": "Tavolata compleanno", "priceEuro": 180, "durationMinutes": 180 }
+      ],
+      "staff": [
+        { "id": "staff-trattoria-rosa", "userId": "user-owner-rosa", "name": "Rosa Fabbri", "role": "owner", "color": "#B45309" },
+        { "id": "staff-trattoria-luca", "name": "Luca Casetti", "role": "manager", "color": "#1D4ED8" },
+        { "id": "staff-trattoria-marta", "name": "Marta Bosi", "role": "staff", "color": "#0F766E" },
+        { "id": "staff-trattoria-pietro", "name": "Pietro Amadori", "role": "staff", "color": "#9333EA" }
+      ],
+      "reviews": [
+        { "author": "Silvia Donati", "rating": 5, "comment": "Cappelletti eccezionali e servizio rapido. La prenotazione online è comodissima." },
+        { "author": "Enrico Casadei", "rating": 5, "comment": "La cena degustazione è stata un viaggio nella vera cucina romagnola." },
+        { "author": "Monica Guidi", "rating": 4, "comment": "Ottima trattoria di famiglia, personale gentile e menù sempre aggiornato sui social." },
+        { "author": "Gabriele Rinaldi", "rating": 5, "comment": "Ho ordinato pasta fresca e sugo dal negozio online: ritiro puntualissimo." },
+        { "author": "Irene Bellini", "rating": 5, "comment": "Locale caldo e autentico, perfetto per le tavolate della domenica." },
+        { "author": "Valerio Foschi", "rating": 4, "comment": "Molto utile il promemoria WhatsApp del tavolo e il link diretto per modificare l'orario." },
+        { "author": "Sara Pasini", "rating": 5, "comment": "Rosa e il team seguono ogni dettaglio, anche per compleanni e piccole cerimonie." },
+        { "author": "Martina Poletti", "rating": 5, "comment": "Tagliatelle al ragù memorabili e ottimo assortimento di vini del territorio." }
+      ],
+      "socialPosts": [
+        "Menù della settimana: strozzapreti al ragù bianco, coniglio in porchetta e zuppa inglese.",
+        "Arrivata la nuova sfoglia fresca: ordina online e ritira in trattoria.",
+        "Domenica romagnola: tavolate in famiglia e piatti della tradizione.",
+        "Dietro le quinte del nostro corso di pasta fresca del giovedì sera."],
+      "giftCards": [40, 75, 120],
+      "automationLabels": ["Conferma prenotazione tavolo", "Messaggio post-cena per recensione", "Promo compleanno clienti fedeli"],
+      "productCategories": [
+        { "id": "cat-trattoria-pasta", "name": "Pasta fresca" },
+        { "id": "cat-trattoria-sughi", "name": "Sughi e pronti" },
+        { "id": "cat-trattoria-vini", "name": "Vini locali" }
+      ],
+      "products": [
+        { "id": "prod-trattoria-tagliatelle", "categoryId": "cat-trattoria-pasta", "name": "Tagliatelle fresche 500g", "description": "Sfoglia fatta a mano ogni mattina", "priceEuro": 6.5, "stock": 18 },
+        { "id": "prod-trattoria-cappelletti", "categoryId": "cat-trattoria-pasta", "name": "Cappelletti da brodo 500g", "description": "Ripieno tradizionale romagnolo", "priceEuro": 12.0, "stock": 12 },
+        { "id": "prod-trattoria-strozzapreti", "categoryId": "cat-trattoria-pasta", "name": "Strozzapreti 500g", "description": "Perfetti con ragù o pesto di stagione", "priceEuro": 5.8, "stock": 22 },
+        { "id": "prod-trattoria-ragu", "categoryId": "cat-trattoria-sughi", "name": "Ragù romagnolo 300g", "description": "Pronto da scaldare", "priceEuro": 7.9, "stock": 20 },
+        { "id": "prod-trattoria-lasagne", "categoryId": "cat-trattoria-sughi", "name": "Lasagne al forno", "description": "Porzione da due persone", "priceEuro": 16.0, "stock": 8 },
+        { "id": "prod-trattoria-sangiovese", "categoryId": "cat-trattoria-vini", "name": "Sangiovese Superiore 0,75L", "description": "Cantina romagnola partner", "priceEuro": 14.5, "stock": 14 },
+        { "id": "prod-trattoria-albana", "categoryId": "cat-trattoria-vini", "name": "Albana Secco 0,75L", "description": "Perfetta con piatti di pesce e formaggi", "priceEuro": 13.0, "stock": 10 },
+        { "id": "prod-trattoria-piadina-kit", "categoryId": "cat-trattoria-sughi", "name": "Kit piadina e squacquerone", "description": "Cena veloce per due persone", "priceEuro": 11.5, "stock": 16 }
+      ],
+      "orderCount": 20
+    },
+    {
+      "id": "biz-fiorista-girasole",
+      "ownerUserId": "user-owner-elisa",
+      "name": "Fiorista Girasole",
+      "slug": "fiorista-girasole",
+      "category": "Fiorista",
+      "city": "Ravenna",
+      "address": "Via Cavour 26, 48121 Ravenna RA",
+      "phone": "+390544760330",
+      "email": "elisa@fioristagirasole.it",
+      "description": "Bouquet personalizzati, consegne in giornata e gestione omnicanale di eventi, ordini e fidelity card per clienti abituali.",
+      "openingHours": [
+        "Lun 09:00-13:00, 15:30-19:30",
+        "Mar 09:00-13:00, 15:30-19:30",
+        "Mer 09:00-13:00, 15:30-19:30",
+        "Gio 09:00-13:00, 15:30-19:30",
+        "Ven 09:00-13:00, 15:30-19:30",
+        "Sab 09:00-19:30",
+        "Dom 09:00-12:30"
+      ],
+      "subscriptionTier": "bottega",
+      "avgServiceMinutes": 40,
+      "partitaIva": "IT02944011208",
+      "codiceFiscale": "GRSLSI88T62H199V",
+      "codiceDestinatario": "W7YVJK9",
+      "regimeFiscale": "RF01",
+      "vatRate": 22,
+      "bookingCount": 78,
+      "customerOffset": 140,
+      "catalogEnabled": true,
+      "services": [
+        { "id": "svc-fiorista-bouquet", "name": "Bouquet personalizzato", "priceEuro": 28, "durationMinutes": 35 },
+        { "id": "svc-fiorista-consegna", "name": "Consegna in giornata", "priceEuro": 8, "durationMinutes": 20 },
+        { "id": "svc-fiorista-laurea", "name": "Composizione laurea", "priceEuro": 35, "durationMinutes": 45 },
+        { "id": "svc-fiorista-matrimonio", "name": "Consulenza matrimonio", "priceEuro": 60, "durationMinutes": 60 },
+        { "id": "svc-fiorista-evento", "name": "Allestimento evento", "priceEuro": 150, "durationMinutes": 90 },
+        { "id": "svc-fiorista-abbonamento", "name": "Abbonamento floreale settimanale", "priceEuro": 24, "durationMinutes": 25 }
+      ],
+      "staff": [
+        { "id": "staff-fiorista-elisa", "userId": "user-owner-elisa", "name": "Elisa Girasoli", "role": "owner", "color": "#DB2777" },
+        { "id": "staff-fiorista-linda", "name": "Linda Venturi", "role": "manager", "color": "#059669" },
+        { "id": "staff-fiorista-yuri", "name": "Yuri Mazza", "role": "staff", "color": "#2563EB" }
+      ],
+      "reviews": [
+        { "author": "Chiara Belli", "rating": 5, "comment": "Bouquet elegantissimo e consegna puntualissima. Elisa capisce subito quello che vuoi." },
+        { "author": "Francesca Ricci", "rating": 5, "comment": "Ho ordinato per WhatsApp e in un attimo avevo foto, preventivo e link pagamento." },
+        { "author": "Stefano Morini", "rating": 4, "comment": "Negozio curato e staff disponibile, ottima esperienza anche per allestimenti piccoli." },
+        { "author": "Giulia Savini", "rating": 5, "comment": "La composizione per la laurea di mia sorella era meravigliosa e super fotografata sui social." },
+        { "author": "Elena Randi", "rating": 5, "comment": "Servizio abbonamento floreale comodo e sempre puntuale per l'ufficio." },
+        { "author": "Massimo Conti", "rating": 4, "comment": "Apprezzo molto i promemoria automatici per anniversari e compleanni." },
+        { "author": "Lucia Farina", "rating": 5, "comment": "Fiori freschissimi e packaging bellissimo, davvero perfetto per regali di lavoro." },
+        { "author": "Roberta Santini", "rating": 5, "comment": "Allestimento evento aziendale raffinato e gestito con grande precisione." }
+      ],
+      "socialPosts": [
+        "Bouquet di stagione con peonie, lisianthus e verde fresco appena arrivato.",
+        "Consegna in giornata a Ravenna: ordina dal link in bio o scrivici su WhatsApp.",
+        "Dietro le quinte dell'allestimento per un battesimo in centro storico.",
+        "Idee regalo floreali per lauree, anniversari e compleanni dell'ultimo minuto."],
+      "giftCards": [25, 45, 90],
+      "automationLabels": ["Reminder anniversario cliente", "Richiesta recensione post-consegna", "Rinnovo abbonamento floreale"],
+      "productCategories": [
+        { "id": "cat-fiorista-bouquet", "name": "Bouquet" },
+        { "id": "cat-fiorista-piante", "name": "Piante" },
+        { "id": "cat-fiorista-regali", "name": "Regali e accessori" }
+      ],
+      "products": [
+        { "id": "prod-fiorista-bouquet-stagione", "categoryId": "cat-fiorista-bouquet", "name": "Bouquet di stagione", "description": "Misto fresco con confezione regalo", "priceEuro": 32.0, "stock": 18 },
+        { "id": "prod-fiorista-rose", "categoryId": "cat-fiorista-bouquet", "name": "Bouquet 12 rose rosse", "description": "Con verde e confezione premium", "priceEuro": 45.0, "stock": 10 },
+        { "id": "prod-fiorista-laurea", "categoryId": "cat-fiorista-bouquet", "name": "Bouquet laurea", "description": "Rosso e alloro con nastro personalizzato", "priceEuro": 38.0, "stock": 12 },
+        { "id": "prod-fiorista-orchidea", "categoryId": "cat-fiorista-piante", "name": "Orchidea phalaenopsis", "description": "Pianta in vaso con cachepot", "priceEuro": 27.0, "stock": 9 },
+        { "id": "prod-fiorista-ulivo", "categoryId": "cat-fiorista-piante", "name": "Pianta di ulivo decorativa", "description": "Formato medio per terrazzi e ingressi", "priceEuro": 34.0, "stock": 7 },
+        { "id": "prod-fiorista-centrotavola", "categoryId": "cat-fiorista-regali", "name": "Centrotavola artigianale", "description": "Composizione per pranzi o cene speciali", "priceEuro": 29.0, "stock": 11 },
+        { "id": "prod-fiorista-candela", "categoryId": "cat-fiorista-regali", "name": "Candela profumata artigianale", "description": "Abbinabile a bouquet e confezioni regalo", "priceEuro": 12.0, "stock": 20 },
+        { "id": "prod-fiorista-box", "categoryId": "cat-fiorista-regali", "name": "Flower box deluxe", "description": "Box elegante con fiori freschi misti", "priceEuro": 55.0, "stock": 6 }
+      ],
+      "orderCount": 16
+    }
+  ]
+}
