@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { EmptyState, InlineMessage, Skeleton } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
@@ -38,6 +38,103 @@ const STEP_LABELS: Record<Exclude<BookingStep, "confirmed">, string> = {
 // Static metadata — defined at module level to avoid recreation on every render.
 const STEP_ORDER: Exclude<BookingStep, "confirmed">[] = ["service", "date", "time", "details"];
 
+// ── Add-to-calendar helpers ───────────────────────────────────────────────────
+
+/** Format a Date as the compact UTC string Google Calendar / iCal expect: YYYYMMDDTHHMMSSZ */
+function toCalendarDate(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+/** Build a Google Calendar "quick-add" URL for the booking. */
+function buildGoogleCalendarUrl(service: string, startsAt: string, durationMinutes: number): string {
+  const start = new Date(startsAt);
+  const end = new Date(start.getTime() + durationMinutes * 60_000);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: service,
+    dates: `${toCalendarDate(start)}/${toCalendarDate(end)}`,
+    details: "Prenotazione confermata tramite Bottega Digitale.",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/** Build the raw ICS text for a booking event. */
+function buildIcsContent(service: string, startsAt: string, durationMinutes: number): string {
+  const start = new Date(startsAt);
+  const end = new Date(start.getTime() + durationMinutes * 60_000);
+  const uid = `booking-${Date.now()}@bottega-digitale`;
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Bottega Digitale//Booking//IT",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${toCalendarDate(new Date())}`,
+    `DTSTART:${toCalendarDate(start)}`,
+    `DTEND:${toCalendarDate(end)}`,
+    `SUMMARY:${service}`,
+    "DESCRIPTION:Prenotazione confermata tramite Bottega Digitale.",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+/**
+ * Trigger an .ics download using a Blob URL.
+ * Works on Chrome/Firefox/Edge (honours the `download` attribute) and on
+ * iOS Safari (which navigates to the blob, sees the text/calendar MIME type
+ * and offers to add the event to Calendar instead of downloading).
+ * This avoids the `data:` URI approach that Safari blocks for downloads.
+ */
+function triggerIcsDownload(service: string, startsAt: string, durationMinutes: number) {
+  const content = buildIcsContent(service, startsAt, durationMinutes);
+  const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "prenotazione.ics";
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  // Revoke after a generous delay to handle slow iOS navigation.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function AddToCalendar({
+  service,
+  startsAt,
+  durationMinutes,
+}: {
+  service: string;
+  startsAt: string;
+  durationMinutes: number;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Aggiungi al calendario
+      </p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <a
+          href={buildGoogleCalendarUrl(service, startsAt, durationMinutes)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          <span aria-hidden="true">📅</span> Google Calendar
+        </a>
+        <button
+          type="button"
+          onClick={() => triggerIcsDownload(service, startsAt, durationMinutes)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          <span aria-hidden="true">🗓️</span> Apple / Outlook (.ics)
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function BookingPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -60,6 +157,13 @@ export default function BookingPage() {
   const [availabilityError, setAvailabilityError] = useState("");
   const [bookingResult, setBookingResult] = useState<{ id: string; service: string; startsAt: string } | null>(null);
   const [reminderMessage, setReminderMessage] = useState("Ti invieremo i dettagli della prenotazione in questa pagina.");
+
+  // Move focus to the active step heading whenever the step changes so keyboard
+  // and screen-reader users always land at the new content without scrolling.
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    stepHeadingRef.current?.focus();
+  }, [step]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -269,7 +373,7 @@ export default function BookingPage() {
         {/* Step: Service */}
         {step === "service" && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-slate-900">Scegli il servizio</h2>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 focus:outline-none">Scegli il servizio</h2>
             {serviceLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-20 w-full" />
@@ -303,7 +407,7 @@ export default function BookingPage() {
         {/* Step: Date */}
         {step === "date" && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-slate-900">Scegli il giorno</h2>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 focus:outline-none">Scegli il giorno</h2>
             <p className="text-sm text-slate-500">Servizio: <strong>{selectedService?.name}</strong></p>
             {availabilityLoading ? (
               <div className="grid grid-cols-2 gap-2">
@@ -346,7 +450,7 @@ export default function BookingPage() {
         {/* Step: Time */}
         {step === "time" && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-slate-900">Scegli l&apos;orario</h2>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 focus:outline-none">Scegli l&apos;orario</h2>
             <p className="text-sm text-slate-500">
               {slotsForDate?.dayName}{" "}
               {new Date(selectedDate + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
@@ -384,7 +488,7 @@ export default function BookingPage() {
         {/* Step: Details */}
         {step === "details" && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">I tuoi dati</h2>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 focus:outline-none">I tuoi dati</h2>
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
               <p><strong>{selectedService?.name}</strong></p>
               <p>
@@ -463,7 +567,7 @@ export default function BookingPage() {
         {step === "confirmed" && bookingResult && (
           <div className="space-y-4 text-center">
             <div className="text-5xl" aria-hidden="true">✅</div>
-            <h2 className="text-xl font-bold text-slate-900">Prenotazione confermata!</h2>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="text-xl font-bold text-slate-900 focus:outline-none">Prenotazione confermata!</h2>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-left">
               <p><strong>Servizio:</strong> {bookingResult.service}</p>
               <p>
@@ -481,6 +585,14 @@ export default function BookingPage() {
               <p className="mt-2 text-xs text-emerald-600">Codice: {bookingResult.id.slice(0, 8).toUpperCase()}</p>
             </div>
             <p className="text-sm text-slate-500">{reminderMessage}</p>
+
+            {/* Add-to-calendar affordances */}
+            <AddToCalendar
+              service={bookingResult.service}
+              startsAt={bookingResult.startsAt}
+              durationMinutes={selectedService?.durationMinutes ?? 60}
+            />
+
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
               <button
                 type="button"
