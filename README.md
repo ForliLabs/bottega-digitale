@@ -326,4 +326,4 @@ Tests cover all core library modules with Vitest and use direct function testing
 
 ## License
 
-Private — All rights reserved.
+Source code is publicly available. No open-source license has been selected yet.
