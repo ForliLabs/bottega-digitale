@@ -82,11 +82,16 @@ describe("Form label association", () => {
       path.resolve(__dirname, "../app/dashboard/bookings/bookings-manager.tsx"),
       "utf-8",
     );
-    // Every label should use htmlFor
+    // Every label should use htmlFor.
     const labelMatches = src.match(/htmlFor="booking-\w+"/g) ?? [];
     const idMatches = src.match(/id="booking-\w+"/g) ?? [];
     expect(labelMatches.length).toBeGreaterThanOrEqual(8);
-    expect(idMatches.length).toBe(labelMatches.length);
+    // The service field has two conditional implementations (select + free-text input)
+    // that share the same id so the label's htmlFor always resolves to the visible
+    // control regardless of which mode is active. Allow id count == label count OR
+    // id count == label count + 1 for that one shared id.
+    expect(idMatches.length).toBeGreaterThanOrEqual(labelMatches.length);
+    expect(idMatches.length).toBeLessThanOrEqual(labelMatches.length + 1);
   });
 
   it("customers form uses htmlFor + id pairs", async () => {

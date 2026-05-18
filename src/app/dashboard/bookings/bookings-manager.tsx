@@ -8,6 +8,15 @@ import { StatusBadge } from "@/components/ui/status-badge";
 const BOOKING_STATUSES = ["Confermata", "In attesa", "Completata", "Cancellata"] as const;
 const BOOKING_CHANNELS = ["Sito web", "WhatsApp", "Instagram", "Telefono", "Online"] as const;
 
+type PredefinedService = {
+  id: string;
+  name: string;
+  priceEuro: number;
+  durationMinutes: number;
+};
+
+const CUSTOM_SERVICE_SENTINEL = "__custom__";
+
 type Booking = {
   id: string;
   customerName: string;
@@ -69,7 +78,13 @@ function toLocalDatetimeValue(iso: string): string {
   return local.toISOString().slice(0, 16);
 }
 
-export function BookingsManager({ initialBookings }: { initialBookings: Booking[] }) {
+export function BookingsManager({
+  initialBookings,
+  predefinedServices = [],
+}: {
+  initialBookings: Booking[];
+  predefinedServices?: PredefinedService[];
+}) {
   const { notify } = useToast();
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [showForm, setShowForm] = useState(false);
@@ -77,6 +92,10 @@ export function BookingsManager({ initialBookings }: { initialBookings: Booking[
   const [form, setForm] = useState<BookingFormData>(emptyForm);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  // Tracks whether the service field is in free-text ("custom") mode
+  const [serviceMode, setServiceMode] = useState<"predefined" | "custom">(
+    predefinedServices.length > 0 ? "predefined" : "custom"
+  );
 
   // Confirm dialog state
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -100,6 +119,7 @@ export function BookingsManager({ initialBookings }: { initialBookings: Booking[
       startsAt: toLocalDatetimeValue(now.toISOString()),
     });
     setErrors([]);
+    setServiceMode(predefinedServices.length > 0 ? "predefined" : "custom");
     setShowForm(true);
   }
 
@@ -116,6 +136,8 @@ export function BookingsManager({ initialBookings }: { initialBookings: Booking[
       notes: booking.notes ?? "",
     });
     setErrors([]);
+    // When editing, prefer free-text mode so the existing value is always shown
+    setServiceMode("custom");
     setShowForm(true);
   }
 
@@ -275,14 +297,67 @@ export function BookingsManager({ initialBookings }: { initialBookings: Booking[
             </div>
             <div>
               <label htmlFor="booking-service" className={labelClass}>Servizio *</label>
-              <input
-                id="booking-service"
-                type="text"
-                required
-                className={inputClass}
-                value={form.service}
-                onChange={(e) => setForm({ ...form, service: e.target.value })}
-              />
+              {predefinedServices.length > 0 && serviceMode === "predefined" ? (
+                <div className="space-y-1.5">
+                  <select
+                    id="booking-service"
+                    required
+                    className={inputClass}
+                    value={
+                      predefinedServices.some((s) => s.name === form.service)
+                        ? form.service
+                        : ""
+                    }
+                    onChange={(e) => {
+                      if (e.target.value === CUSTOM_SERVICE_SENTINEL) {
+                        setServiceMode("custom");
+                        return;
+                      }
+                      const svc = predefinedServices.find((s) => s.name === e.target.value);
+                      if (svc) {
+                        setForm((f) => ({
+                          ...f,
+                          service: svc.name,
+                          durationMinutes: svc.durationMinutes,
+                          priceEuro: svc.priceEuro,
+                        }));
+                      }
+                    }}
+                  >
+                    <option value="" disabled>Seleziona un servizio…</option>
+                    {predefinedServices.map((svc) => (
+                      <option key={svc.id} value={svc.name}>
+                        {svc.name} · {svc.durationMinutes} min · €{svc.priceEuro}
+                      </option>
+                    ))}
+                    <option value={CUSTOM_SERVICE_SENTINEL}>— Inserisci manualmente…</option>
+                  </select>
+                  <p className="text-xs text-slate-500">
+                    Durata e prezzo vengono precompilati in automatico.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <input
+                    id="booking-service"
+                    type="text"
+                    required
+                    className={inputClass}
+                    value={form.service}
+                    onChange={(e) => setForm({ ...form, service: e.target.value })}
+                    placeholder="Es. Taglio capelli"
+                  />
+                  {predefinedServices.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setServiceMode("predefined")}
+                      className="text-xs text-amber-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    >
+                      ← Scegli dai servizi predefiniti
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label htmlFor="booking-startsAt" className={labelClass}>Data e ora *</label>
@@ -412,7 +487,7 @@ export function BookingsManager({ initialBookings }: { initialBookings: Booking[
                 <div className="flex flex-wrap gap-2 pt-1">
                   <select
                     aria-label={`Cambia stato per ${booking.customerName}`}
-                    className="min-h-[44px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                    className="min-h-[44px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     value={booking.status}
                     onChange={(e) => handleStatusChange(booking, e.target.value)}
                   >
@@ -464,7 +539,7 @@ export function BookingsManager({ initialBookings }: { initialBookings: Booking[
                     <td className="px-6 py-4">
                       <select
                         aria-label={`Cambia stato per ${booking.customerName}`}
-                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium"
+                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                         value={booking.status}
                         onChange={(e) => handleStatusChange(booking, e.target.value)}
                       >
