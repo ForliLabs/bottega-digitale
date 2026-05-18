@@ -251,6 +251,19 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
             </form>
           ) : (
             <div className="mt-8 space-y-6">
+              {/* Always-mounted assertive live region — announces turn-called state to
+                  screen readers reliably regardless of when the element is in the DOM.
+                  The visual banner below is kept for sighted users. */}
+              <p
+                role="alert"
+                aria-live="assertive"
+                aria-atomic="true"
+                className="sr-only"
+              >
+                {status?.entry?.status === "called"
+                  ? "È il tuo turno! Presentati al banco."
+                  : ""}
+              </p>
               <div className="rounded-2xl bg-amber-50 p-6 text-center">
                 <p className="text-sm font-semibold text-amber-700">La tua posizione</p>
                 <p className="mt-2 text-5xl font-bold text-amber-600">{status?.position || "..."}</p>
@@ -263,13 +276,11 @@ export default function QueuePublicPage({ params }: { params: Promise<{ business
                 {/* Live region for polling status updates */}
                 <p aria-live="polite" aria-atomic="true" className="mt-2 text-xs text-slate-400">{pollStatus}</p>
                 {status?.entry?.status === "called" && (
-                  <div
-                    role="alert"
-                    aria-live="assertive"
-                    className="mt-4 rounded-2xl bg-emerald-50 p-4"
-                  >
+                  /* Visual-only banner — screen-reader announcement is handled by the
+                     always-mounted sr-only live region above. */
+                  <div aria-hidden="true" className="mt-4 rounded-2xl bg-emerald-50 p-4">
                     <p className="text-lg font-bold text-emerald-700">
-                      <span aria-hidden="true">🔔 </span>È il tuo turno!
+                      🔔 È il tuo turno!
                     </p>
                     <p className="text-sm text-emerald-600">Presentati al banco.</p>
                   </div>
