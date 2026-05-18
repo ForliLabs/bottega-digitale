@@ -107,23 +107,37 @@ export default function OnboardingPage() {
       <div className="w-full max-w-2xl">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="mb-8">
-            <div className="flex items-center gap-3">
-              {steps.map((s, i) => (
-                <div key={s.title} className="flex items-center gap-2">
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
-                      i + 1 <= step ? "bg-amber-500 text-white" : "bg-slate-200 text-slate-500"
-                    }`}
-                  >
-                    {i + 1}
-                  </div>
-                  <span className={`text-sm font-medium ${i + 1 <= step ? "text-slate-900" : "text-slate-400"}`}>
-                    {s.title}
-                  </span>
-                  {i < steps.length - 1 && <div className="mx-2 h-px w-8 bg-slate-200" />}
-                </div>
-              ))}
-            </div>
+            <nav aria-label="Passi dell'onboarding">
+              <ol className="flex items-center gap-3">
+                {steps.map((s, i) => {
+                  const isCurrent = i + 1 === step;
+                  const isCompleted = i + 1 < step;
+                  return (
+                    <li key={s.title} className="flex items-center gap-2" aria-current={isCurrent ? "step" : undefined}>
+                      <div
+                        className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
+                          i + 1 <= step ? "bg-amber-500 text-white" : "bg-slate-200 text-slate-500"
+                        }`}
+                      >
+                        <span className="sr-only">
+                          {`Passo ${i + 1}: ${s.title}${isCurrent ? " (corrente)" : isCompleted ? " (completato)" : ""}`}
+                        </span>
+                        <span aria-hidden="true">{i + 1}</span>
+                      </div>
+                      <span
+                        aria-hidden="true"
+                        className={`text-sm font-medium ${i + 1 <= step ? "text-slate-900" : "text-slate-400"}`}
+                      >
+                        {s.title}
+                      </span>
+                      {i < steps.length - 1 && (
+                        <div className="mx-2 h-px w-8 bg-slate-200" aria-hidden="true" />
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
             <h1 className="mt-6 text-2xl font-bold text-slate-900">{steps[step - 1].title}</h1>
             <p className="mt-1 text-sm text-slate-600">{steps[step - 1].description}</p>
           </div>
