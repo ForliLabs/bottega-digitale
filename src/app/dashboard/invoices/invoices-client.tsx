@@ -90,8 +90,15 @@ export function InvoicesClient({
       if (!response.ok) {
         throw new Error(data.message || data.error || "Impossibile salvare il profilo fiscale");
       }
+      // Update local stats in-place instead of triggering a full-page reload.
+      setStats((current) => ({
+        invoices: current?.invoices ?? [],
+        totals: current?.totals ?? { net: 0, vat: 0, gross: 0 },
+        count: current?.count ?? 0,
+        currentYear: current?.currentYear ?? new Date().getFullYear(),
+        fiscalProfile: fiscalForm,
+      }));
       notify({ tone: "success", title: "Profilo fiscale salvato" });
-      window.location.reload();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Impossibile salvare il profilo fiscale");
     } finally {
@@ -117,8 +124,22 @@ export function InvoicesClient({
       if (!response.ok) {
         throw new Error(data.message || data.error || "Impossibile generare la fattura");
       }
-      notify({ tone: "success", title: "Fattura generata" });
-      window.location.reload();
+      // Re-fetch updated stats so the invoice list reflects the new entry
+      // without a full-page reload.
+      const statsResponse = await fetch("/api/invoices");
+      if (statsResponse.ok) {
+        const updatedStats = await statsResponse.json();
+        setStats(updatedStats);
+        notify({ tone: "success", title: "Fattura generata" });
+      } else {
+        // Generation succeeded but the list refresh failed — surface a clear warning
+        // so the user knows to reload rather than seeing stale data silently.
+        notify({
+          tone: "success",
+          title: "Fattura generata",
+          description: "Aggiorna la pagina per vedere la nuova fattura nell'elenco.",
+        });
+      }
     } catch (generateError) {
       setError(generateError instanceof Error ? generateError.message : "Impossibile generare la fattura");
     } finally {
