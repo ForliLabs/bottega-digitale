@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EmptyState, InlineMessage } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
+import { CopyLinkButton } from "@/components/ui/copy-link-button";
 
 interface LoyaltyCardItem {
   id: string;
@@ -38,6 +39,32 @@ export function LoyaltyDashboardClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Track the last-saved settings snapshot to detect unsaved changes.
+  const [savedSnapshot, setSavedSnapshot] = useState({
+    enabled: business.loyaltyEnabled,
+    pointsPerVisit: String(business.loyaltyPointsPerVisit),
+    rewardThreshold: String(business.loyaltyRewardThreshold),
+    rewardName: business.loyaltyRewardName,
+  });
+  const isDirty = useMemo(
+    () =>
+      enabled !== savedSnapshot.enabled ||
+      pointsPerVisit !== savedSnapshot.pointsPerVisit ||
+      rewardThreshold !== savedSnapshot.rewardThreshold ||
+      rewardName !== savedSnapshot.rewardName,
+    [enabled, pointsPerVisit, rewardThreshold, rewardName, savedSnapshot],
+  );
+
+  // Warn browser when navigating away with unsaved loyalty settings.
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirty) return;
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
   const publicLink = useMemo(() => `/loyalty/${business.id}`, [business.id]);
   const eligibleCards = cards.filter((card) => card.points >= Number(rewardThreshold || business.loyaltyRewardThreshold));
 
@@ -60,6 +87,7 @@ export function LoyaltyDashboardClient({
         throw new Error(data.message || data.error || "Impossibile salvare le impostazioni loyalty");
       }
       notify({ tone: "success", title: "Impostazioni loyalty aggiornate" });
+      setSavedSnapshot({ enabled, pointsPerVisit, rewardThreshold, rewardName });
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Impossibile salvare le impostazioni loyalty");
     } finally {
@@ -123,14 +151,41 @@ export function LoyaltyDashboardClient({
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Portale pubblico</p>
-          <p className="mt-2 text-sm font-semibold text-slate-900">{publicLink}</p>
+          <p className="mt-2 break-all text-xs font-mono text-slate-600">{publicLink}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <CopyLinkButton
+              url={publicLink}
+              label="Copia link"
+              aria-label="Copia link del portale fedeltà"
+            />
+            <a
+              href={publicLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            >
+              Anteprima ↗
+            </a>
+          </div>
         </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Impostazioni loyalty</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">Impostazioni loyalty</h2>
+              {isDirty && (
+                <span
+                  role="status"
+                  aria-label="Hai modifiche non salvate"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                  Modifiche non salvate
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-sm text-slate-500">Aggiorna i parametri del programma senza passaggi manuali.</p>
           </div>
           <label htmlFor="loyalty-enabled" className="flex items-center gap-3 rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
@@ -149,9 +204,14 @@ export function LoyaltyDashboardClient({
             Nome premio
             <input id="loyalty-reward-name" value={rewardName} onChange={(event) => setRewardName(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" placeholder="Servizio gratuito" />
           </label>
-          <button type="button" onClick={saveSettings} disabled={loading || !rewardName.trim()} className="rounded-xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold text-white hover:bg-fuchsia-700 disabled:opacity-50">
-            {loading ? "Salvataggio..." : "Salva impostazioni"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={saveSettings} disabled={loading || !rewardName.trim()} className="rounded-xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold text-white hover:bg-fuchsia-700 disabled:opacity-50">
+              {loading ? "Salvataggio..." : "Salva impostazioni"}
+            </button>
+            {!isDirty && !loading && (
+              <span className="text-xs text-slate-400">Tutto salvato ✓</span>
+            )}
+          </div>
         </div>
 
         <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -174,8 +234,26 @@ export function LoyaltyDashboardClient({
           <button type="button" onClick={redeemReward} disabled={loading || !selectedCardId} className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
             {loading ? "Registrazione..." : "Registra riscatto"}
           </button>
-          <div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50 p-4 text-sm text-fuchsia-700">
-            QR check-in clienti: <span className="font-semibold text-fuchsia-900">{publicLink}</span>
+          <div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50 p-4">
+            <p className="text-sm font-semibold text-fuchsia-800">Link check-in clienti</p>
+            <p className="mt-1 break-all text-xs font-mono text-fuchsia-700">{publicLink}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <CopyLinkButton
+                url={publicLink}
+                label="Copia link"
+                copiedLabel="Copiato!"
+                aria-label="Copia link pubblico della carta fedeltà"
+                className="rounded-xl border border-fuchsia-200 bg-white px-3 py-2 text-xs font-semibold text-fuchsia-700 hover:bg-fuchsia-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400 focus-visible:ring-offset-1"
+              />
+              <a
+                href={publicLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl border border-fuchsia-200 bg-white px-3 py-2 text-xs font-semibold text-fuchsia-700 hover:bg-fuchsia-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400 focus-visible:ring-offset-1"
+              >
+                Anteprima ↗
+              </a>
+            </div>
           </div>
         </div>
       </section>

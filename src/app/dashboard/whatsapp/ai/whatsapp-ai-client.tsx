@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { InlineMessage } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -28,6 +28,30 @@ export function WhatsAppAIClient({
   const [faqText, setFaqText] = useState(initialSettings.faqLines.join("\n"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Track the last-saved state to detect unsaved changes
+  const [savedSnapshot, setSavedSnapshot] = useState(() => ({
+    enabled: initialSettings.enabled,
+    personality: initialSettings.personality,
+    faqText: initialSettings.faqLines.join("\n"),
+  }));
+
+  const isDirty = useMemo(
+    () =>
+      enabled !== savedSnapshot.enabled ||
+      personality !== savedSnapshot.personality ||
+      faqText !== savedSnapshot.faqText,
+    [enabled, personality, faqText, savedSnapshot]
+  );
+
+  // Warn when leaving with unsaved changes
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirty) return;
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
 
   async function saveSettings() {
     setLoading(true);
@@ -46,6 +70,7 @@ export function WhatsAppAIClient({
       if (!response.ok) {
         throw new Error(data.message || data.error || "Impossibile salvare la configurazione");
       }
+      setSavedSnapshot({ enabled, personality, faqText });
       notify({ tone: "success", title: "Configurazione WhatsApp AI aggiornata" });
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Impossibile salvare la configurazione");
@@ -98,7 +123,20 @@ export function WhatsAppAIClient({
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Configurazione</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-slate-900">Configurazione</h2>
+            {/* Unsaved-changes indicator */}
+            {isDirty && (
+              <span
+                role="status"
+                aria-label="Hai modifiche non salvate"
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                Modifiche non salvate
+              </span>
+            )}
+          </div>
           <div className="mt-5 space-y-4">
             <label className="block text-sm font-medium text-slate-700">
               Personalità
@@ -111,9 +149,19 @@ export function WhatsAppAIClient({
               FAQ rapide (una per riga, formato domanda|risposta)
               <textarea value={faqText} onChange={(event) => setFaqText(event.target.value)} rows={8} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" placeholder="Parcheggio?|Sì, dietro il negozio trovi 6 posti" />
             </label>
-            <button type="button" onClick={saveSettings} disabled={loading} className="rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50">
-              {loading ? "Salvataggio..." : "Salva configurazione"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={saveSettings}
+                disabled={loading || !isDirty}
+                className="rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {loading ? "Salvataggio..." : "Salva configurazione"}
+              </button>
+              {!isDirty && !loading && (
+                <span className="text-xs text-slate-400">Tutto salvato ✓</span>
+              )}
+            </div>
           </div>
         </div>
 

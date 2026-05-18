@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { InlineMessage } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -49,6 +49,29 @@ export function WebsiteEditorClient({
   const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  // Track the last-saved state to detect unsaved changes (mirrors whatsapp-ai pattern).
+  const [savedSnapshot, setSavedSnapshot] = useState(initialState);
+  const isDirty = useMemo(
+    () =>
+      form.name !== savedSnapshot.name ||
+      form.description !== savedSnapshot.description ||
+      form.address !== savedSnapshot.address ||
+      form.phone !== savedSnapshot.phone ||
+      form.email !== savedSnapshot.email ||
+      form.websiteTemplate !== savedSnapshot.websiteTemplate,
+    [form, savedSnapshot],
+  );
+
+  // Warn the browser when navigating away with unsaved changes.
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirty) return;
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
   const recommendedTemplates = useMemo(() => {
     const category = businessCategory.toLowerCase();
     const matching = businessTemplates.filter((template) => category && template.id.includes(category.slice(0, 5)));
@@ -73,6 +96,8 @@ export function WebsiteEditorClient({
       }
 
       setForm((current) => ({ ...current, websitePublished: data.published }));
+      // Snapshot the full set of fields just sent to the server so isDirty resets to false.
+      setSavedSnapshot({ ...form, websitePublished: data.published });
       notify({ tone: "success", title: data.published ? "Sito aggiornato e pubblicato" : "Sito aggiornato" });
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Impossibile salvare il sito");
@@ -126,7 +151,19 @@ export function WebsiteEditorClient({
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.4fr]">
         <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Contenuti modificabili</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">Contenuti modificabili</h2>
+              {isDirty && (
+                <span
+                  role="status"
+                  aria-label="Hai modifiche non salvate"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                  Modifiche non salvate
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-sm text-slate-500">Le modifiche aggiornano direttamente la pagina pubblica.</p>
           </div>
 
@@ -220,7 +257,7 @@ export function WebsiteEditorClient({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={() => saveChanges(form.websitePublished)}
@@ -237,6 +274,9 @@ export function WebsiteEditorClient({
             >
               {form.websitePublished ? "Metti offline" : "Pubblica sito"}
             </button>
+            {!isDirty && !loading && (
+              <span className="text-xs text-slate-400">Tutto salvato ✓</span>
+            )}
           </div>
         </div>
 
