@@ -137,7 +137,7 @@ export default function Home(): ReactNode {
 
         {/* FEATURES */}
         <section className="bd-section">
-          <h2>Everything a bottega needs, nothing it doesn't.</h2>
+          <h2>Everything a bottega needs, nothing it doesn&apos;t.</h2>
           <p className="bd-section__sub">
             Six core surfaces, dozens of building blocks. Every feature degrades gracefully when the related
             integration is not configured — so you can run the whole platform with zero API keys for development.
