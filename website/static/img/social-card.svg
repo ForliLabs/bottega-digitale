@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7ed"/>
+      <stop offset="1" stop-color="#fed7aa"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c2410c"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g transform="translate(96, 180)">
+    <rect width="120" height="120" rx="26" fill="#c2410c"/>
+    <path d="M26 46h68l-4 11H30l-4-11Z" fill="#fed7aa"/>
+    <path d="M30 57h60v34a8 8 0 0 1-8 8H38a8 8 0 0 1-8-8V57Z" fill="#fef3c7"/>
+    <rect x="49" y="68" width="22" height="31" rx="3" fill="#c2410c"/>
+  </g>
+  <text x="260" y="260" font-family="Inter, system-ui, sans-serif" font-size="72" font-weight="800" fill="#1c1917">Bottega Digitale</text>
+  <text x="260" y="320" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="500" fill="#57534e">Il bancone digitale per ogni bottega italiana.</text>
+  <text x="260" y="380" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="500" fill="url(#brand)">Bookings · FatturaPA · WhatsApp · Stripe · CRM · AI</text>
+  <text x="96" y="560" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="500" fill="#78716c">github.com/ForliLabs/bottega-digitale</text>
+</svg>

@@ -1,0 +1,335 @@
+/**
+ * Bottega Digitale — design tokens
+ * Warm terracotta + saffron, inspired by Romagna ceramics and Forlì brick.
+ */
+
+:root {
+  --ifm-color-primary: #c2410c;        /* terracotta 700 */
+  --ifm-color-primary-dark: #9a3412;   /* terracotta 800 */
+  --ifm-color-primary-darker: #7c2d12; /* terracotta 900 */
+  --ifm-color-primary-darkest: #5b1f0c;
+  --ifm-color-primary-light: #ea580c;
+  --ifm-color-primary-lighter: #f97316;
+  --ifm-color-primary-lightest: #fb923c;
+
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ifm-heading-font-weight: 700;
+  --ifm-code-font-size: 92%;
+  --ifm-navbar-height: 4rem;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+
+  --bd-bg-soft: #fff7ed;       /* amber 50 */
+  --bd-bg-accent: #fff1e6;
+  --bd-accent: #b45309;        /* saffron */
+  --bd-ink: #1c1917;
+  --bd-muted: #57534e;
+  --bd-border: #e7e5e4;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #fb923c;
+  --ifm-color-primary-dark: #f97316;
+  --ifm-color-primary-darker: #ea580c;
+  --ifm-color-primary-darkest: #c2410c;
+  --ifm-color-primary-light: #fdba74;
+  --ifm-color-primary-lighter: #fed7aa;
+  --ifm-color-primary-lightest: #ffedd5;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.1);
+
+  --bd-bg-soft: #1c1411;
+  --bd-bg-accent: #261812;
+  --bd-accent: #fbbf24;
+  --bd-ink: #fafaf9;
+  --bd-muted: #a8a29e;
+  --bd-border: #292524;
+}
+
+/* GitHub icon in navbar */
+.header-github-link::before {
+  content: '';
+  width: 22px;
+  height: 22px;
+  display: flex;
+  background: url("data:image/svg+xml;charset=utf-8,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='currentColor' d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E") no-repeat;
+}
+
+[data-theme='dark'] .header-github-link::before {
+  filter: invert(1);
+}
+
+/* Homepage */
+.bd-hero {
+  position: relative;
+  padding: 5rem 1rem 4rem;
+  background:
+    radial-gradient(ellipse at top right, rgba(251, 146, 60, 0.18), transparent 60%),
+    radial-gradient(ellipse at bottom left, rgba(180, 83, 9, 0.15), transparent 60%),
+    var(--bd-bg-soft);
+  overflow: hidden;
+}
+
+[data-theme='dark'] .bd-hero {
+  background:
+    radial-gradient(ellipse at top right, rgba(251, 146, 60, 0.12), transparent 60%),
+    radial-gradient(ellipse at bottom left, rgba(180, 83, 9, 0.18), transparent 60%),
+    #100806;
+}
+
+.bd-hero__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (max-width: 996px) {
+  .bd-hero__inner { grid-template-columns: 1fr; }
+}
+
+.bd-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(194, 65, 12, 0.1);
+  color: var(--ifm-color-primary-dark);
+  font-weight: 600;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .bd-eyebrow {
+  background: rgba(251, 146, 60, 0.15);
+  color: var(--ifm-color-primary-light);
+}
+
+.bd-hero h1 {
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  line-height: 1.1;
+  margin: 1rem 0 1rem;
+  letter-spacing: -0.02em;
+}
+
+.bd-hero h1 em {
+  font-style: normal;
+  background: linear-gradient(120deg, #c2410c, #b45309);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bd-hero p.bd-lede {
+  font-size: 1.2rem;
+  color: var(--bd-muted);
+  max-width: 36rem;
+  margin: 0 0 1.75rem;
+}
+
+.bd-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.bd-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.bd-badges img { height: 20px; }
+
+/* Hero terminal */
+.bd-terminal {
+  background: #1c1917;
+  border: 1px solid #292524;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+}
+
+.bd-terminal__bar {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 0.85rem;
+  background: #0f0c0a;
+  border-bottom: 1px solid #292524;
+}
+
+.bd-terminal__bar span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #44403c;
+}
+
+.bd-terminal__bar span:nth-child(1) { background: #ef4444; }
+.bd-terminal__bar span:nth-child(2) { background: #f59e0b; }
+.bd-terminal__bar span:nth-child(3) { background: #10b981; }
+
+.bd-terminal pre {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  color: #fafaf9;
+  background: transparent;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.bd-terminal .prompt { color: #fb923c; }
+.bd-terminal .comment { color: #78716c; }
+.bd-terminal .ok { color: #4ade80; }
+
+/* Feature grid */
+.bd-section {
+  padding: 4rem 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.bd-section h2 {
+  text-align: center;
+  font-size: clamp(1.75rem, 3vw, 2.4rem);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.bd-section__sub {
+  text-align: center;
+  color: var(--bd-muted);
+  max-width: 38rem;
+  margin: 0 auto 3rem;
+  font-size: 1.05rem;
+}
+
+.bd-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.bd-feature {
+  border: 1px solid var(--bd-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  background: var(--ifm-background-color);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bd-feature:hover {
+  transform: translateY(-2px);
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 12px 30px -18px rgba(194, 65, 12, 0.5);
+}
+
+.bd-feature__icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.bd-feature h3 {
+  font-size: 1.1rem;
+  margin: 0 0 0.4rem;
+}
+
+.bd-feature p {
+  font-size: 0.95rem;
+  color: var(--bd-muted);
+  margin: 0;
+}
+
+/* Snippet section */
+.bd-snippet {
+  background: var(--bd-bg-soft);
+  padding: 4rem 1rem;
+}
+
+[data-theme='dark'] .bd-snippet { background: #15100d; }
+
+.bd-snippet__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .bd-snippet__inner { grid-template-columns: 1fr; }
+}
+
+.bd-snippet h2 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+
+.bd-snippet p {
+  color: var(--bd-muted);
+  font-size: 1.05rem;
+}
+
+.bd-snippet pre {
+  border-radius: 12px;
+  margin: 0;
+  font-size: 0.85rem;
+  box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.35);
+}
+
+/* CTA */
+.bd-cta-band {
+  padding: 4rem 1rem;
+  text-align: center;
+}
+
+.bd-cta-band__inner {
+  max-width: 720px;
+  margin: 0 auto;
+  border: 1px solid var(--bd-border);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  background:
+    linear-gradient(135deg, rgba(194, 65, 12, 0.06), rgba(180, 83, 9, 0.04));
+}
+
+.bd-cta-band h2 {
+  font-size: 2rem;
+  margin: 0 0 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.bd-cta-band p {
+  color: var(--bd-muted);
+  margin-bottom: 1.5rem;
+}
+
+/* Audience cards */
+.bd-audience {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.bd-audience__card {
+  padding: 1.25rem;
+  border-radius: 10px;
+  background: var(--bd-bg-accent);
+  border: 1px solid var(--bd-border);
+}
+
+.bd-audience__card strong { display: block; margin-bottom: 0.35rem; }
+.bd-audience__card span { color: var(--bd-muted); font-size: 0.9rem; }
+
+/* Subtle docs improvements */
+.markdown h2 { margin-top: 2.4rem; }
+.markdown h3 { margin-top: 1.8rem; }
