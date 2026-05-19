@@ -39,6 +39,7 @@ const PROTECTED_API_PREFIXES = [
   "/api/availability",
   "/api/associations",
   "/api/accountant",
+  "/api/business-capabilities",
 ];
 
 // Routes exempt from CSRF (webhooks, public APIs)

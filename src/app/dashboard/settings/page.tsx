@@ -33,6 +33,12 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
         description: "Gestisci i collaboratori e i relativi permessi.",
         href: "/dashboard/staff",
       },
+      {
+        icon: "🧩",
+        label: "Moduli attivi",
+        description: "Accendi o spegni booking, coda, catalogo, loyalty, sito e moduli avanzati da un unico posto.",
+        href: "/dashboard/settings/features",
+      },
     ],
   },
   {
