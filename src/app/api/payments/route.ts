@@ -1,5 +1,5 @@
 import { requireBusinessContext } from "@/lib/auth";
-import { createDepositPayment, getPaymentStats } from "@/lib/payments";
+import { createConnectAccount, createDepositPayment, getPaymentStats } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +32,20 @@ export async function POST(request: Request) {
         bookingId: payload.bookingId,
       });
       return Response.json({ clientSecret });
+    }
+
+    if (payload.type === "connect_onboarding") {
+      const onboarding = await createConnectAccount({
+        businessId: business.id,
+        email: business.email,
+        businessName: business.name,
+      });
+
+      if (!onboarding?.onboardingUrl) {
+        return Response.json({ error: "Stripe Connect non disponibile in questo ambiente" }, { status: 400 });
+      }
+
+      return Response.json(onboarding);
     }
 
     return Response.json({ error: "Tipo di pagamento non supportato" }, { status: 400 });

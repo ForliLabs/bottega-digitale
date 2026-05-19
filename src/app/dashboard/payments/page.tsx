@@ -1,6 +1,9 @@
 export const dynamic = "force-dynamic";
+import Link from "next/link";
 import { getBusinessContext } from "@/lib/auth";
 import { getPaymentStats, formatEuro } from "@/lib/payments";
+import { isStripeConfigured } from "@/lib/stripe";
+import { ConnectOnboardingCard } from "./connect-onboarding-card";
 
 const TYPE_LABELS: Record<string, string> = {
   deposit: "Acconto",
@@ -19,6 +22,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function PaymentsPage() {
   const business = await getBusinessContext();
   const stats = business ? await getPaymentStats(business.id) : null;
+  const stripeReady = isStripeConfigured();
 
   return (
     <div className="space-y-8">
@@ -47,6 +51,7 @@ export default async function PaymentsPage() {
             <strong>Come funziona:</strong> I pagamenti vengono versati settimanalmente via SEPA.
             Commissione piattaforma: 2.5%.
           </div>
+          <ConnectOnboardingCard stripeReady={stripeReady} />
         </div>
       ) : (
         <>
@@ -71,9 +76,36 @@ export default async function PaymentsPage() {
                 </div>
               </section>
 
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="font-semibold">Imposta rapidamente moduli e incassi</p>
+                    <p className="mt-1 text-sky-800/80">
+                      Gestisci depositi, percentuali e moduli commerciali senza uscire dal flusso operativo.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link href="/dashboard/settings/features" className="rounded-xl border border-sky-200 bg-white px-4 py-2 font-semibold text-sky-700 hover:bg-sky-100">
+                      Apri moduli attivi
+                    </Link>
+                    <Link href="/dashboard/billing" className="rounded-xl border border-sky-200 bg-white px-4 py-2 font-semibold text-sky-700 hover:bg-sky-100">
+                      Vai al piano
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
               {/* Deposit config */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Configurazione acconti</h2>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Configurazione acconti</h2>
+                    <p className="mt-1 text-sm text-slate-500">Rivedi collegamento Stripe, percentuale e disponibilità del modulo depositi.</p>
+                  </div>
+                  <Link href="/dashboard/settings/features" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    Modifica impostazioni
+                  </Link>
+                </div>
                 <div className="mt-3 grid gap-4 text-sm md:grid-cols-3">
                   <div className="rounded-xl bg-slate-50 p-4">
                     <p className="text-slate-500">Acconti attivi</p>
