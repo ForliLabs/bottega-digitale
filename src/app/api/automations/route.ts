@@ -90,3 +90,36 @@ export async function PATCH(request: Request) {
     return apiError("Errore nell'aggiornamento del flusso", 500, "automation_update_failed");
   }
 }
+
+export async function DELETE(request: Request) {
+  const csrfError = ensureSameOrigin(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  try {
+    const business = await requireBusinessContext();
+    if (!business) {
+      return apiError("Autenticazione richiesta", 401, "unauthorized");
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return apiError("ID flusso obbligatorio", 400, "validation_error");
+    }
+
+    const deleted = await prisma.automationFlow.deleteMany({
+      where: { id, businessId: business.id },
+    });
+
+    if (deleted.count === 0) {
+      return apiError("Flusso non trovato", 404, "automation_not_found");
+    }
+
+    return apiJson({ success: true });
+  } catch {
+    return apiError("Errore nell'eliminazione del flusso", 500, "automation_delete_failed");
+  }
+}
